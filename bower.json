@@ -12,5 +12,9 @@
     "purescript-either": "^2.1.0",
     "purescript-maybe": "^2.0.1",
     "purescript-prelude": "^2.3.0"
+  },
+  "devDependencies": {
+    "purescript-test-unit": "^10.1.0",
+    "purescript-node-buffer": "^2.0.0"
   }
 }
