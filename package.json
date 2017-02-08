@@ -1,0 +1,6 @@
+{
+  "name": "purescript-redis",
+  "dependencies": {
+    "ioredis": "^2.5.0"
+  }
+}
