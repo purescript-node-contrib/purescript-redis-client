@@ -8,7 +8,7 @@
   "dependencies": {
     "purescript-aff": "^2.0.2",
     "purescript-transformers": "^2.2.0",
-    "purescript-bytestrings": "^1.1.0",
+    "purescript-bytestrings": "^2.0.0",
     "purescript-either": "^2.1.0",
     "purescript-maybe": "^2.0.1",
     "purescript-prelude": "^2.3.0"
