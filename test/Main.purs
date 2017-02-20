@@ -2,6 +2,7 @@ module Test.Main
   ( main
   ) where
 
+import Data.Array (sort)
 import Data.ByteString as ByteString
 import Data.Maybe (Maybe(..))
 import Database.Redis as Redis
@@ -28,5 +29,9 @@ main = runTest do
       do
         got <- Redis.incr redis key2
         Assert.equal 1 got
+
+      do
+        got <- Redis.keys redis (b "*")
+        Assert.equal (sort [key1, key2]) (sort got)
   where
   b = ByteString.fromString `flip` UTF8

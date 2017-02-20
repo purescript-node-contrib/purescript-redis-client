@@ -87,3 +87,18 @@ exports.incr = function(conn) {
     };
   };
 };
+
+exports.keys = function(conn) {
+  return function(pattern) {
+    return function(onSuccess, onError) {
+      conn.keysBuffer(pattern, function(err, value) {
+        if (err !== null) {
+          onError(err);
+          return;
+        }
+        onSuccess(value);
+      });
+      return Control_Monad_Aff.nonCanceler;
+    };
+  };
+};

@@ -10,6 +10,7 @@ module Database.Redis
   , set
   , get
   , incr
+  , keys
   ) where
 
 import Control.Monad.Aff (Aff)
@@ -43,6 +44,7 @@ foreign import del  :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: 
 foreign import set  :: ∀ eff. Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Unit
 foreign import get  :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 foreign import incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
+foreign import keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
 
 --------------------------------------------------------------------------------
 
