@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "purescript-test-unit": "^10.1.0",
-    "purescript-node-buffer": "^2.0.0"
+    "purescript-node-buffer": "^2.0.0",
+    "purescript-arrays": "^3.2.1"
   }
 }
