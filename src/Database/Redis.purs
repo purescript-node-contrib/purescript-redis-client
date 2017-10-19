@@ -13,12 +13,14 @@ module Database.Redis
   , keys
   ) where
 
+import Prelude
+
 import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (kind Effect)
 import Control.Monad.Error.Class (class MonadError, catchError, throwError)
 import Data.ByteString (ByteString)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe)
-import Prelude
 
 --------------------------------------------------------------------------------
 
