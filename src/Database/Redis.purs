@@ -16,6 +16,7 @@ module Database.Redis
 import Prelude
 
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Compat (EffFnAff, fromEffFnAff)
 import Control.Monad.Eff (kind Effect)
 import Control.Monad.Error.Class (class MonadError, catchError, throwError)
 import Data.ByteString (ByteString)
@@ -37,16 +38,32 @@ withConnection
   -> Aff (redis :: REDIS | eff) a
 withConnection s = bracket (connect s) disconnect
 
-foreign import connect :: ∀ eff. String -> Aff (redis :: REDIS | eff) Connection
-foreign import disconnect :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
+foreign import connectImpl :: ∀ eff. String -> EffFnAff (redis :: REDIS | eff) Connection
+foreign import disconnectImpl :: ∀ eff. Connection -> EffFnAff (redis :: REDIS | eff) Unit
+
+connect :: ∀ eff. String -> Aff (redis :: REDIS | eff) Connection
+connect = fromEffFnAff <<< connectImpl
+disconnect :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
+disconnect = fromEffFnAff <<< disconnectImpl
 
 --------------------------------------------------------------------------------
 
-foreign import del  :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
-foreign import set  :: ∀ eff. Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Unit
-foreign import get  :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-foreign import incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
-foreign import keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
+foreign import delImpl  :: ∀ eff. Connection -> Array ByteString -> EffFnAff (redis :: REDIS | eff) Unit
+foreign import setImpl  :: ∀ eff. Connection -> ByteString -> ByteString -> EffFnAff (redis :: REDIS | eff) Unit
+foreign import getImpl  :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
+foreign import incrImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) Int
+foreign import keysImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+
+del  :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
+del conn = fromEffFnAff <<< delImpl conn
+set  :: ∀ eff. Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Unit
+set conn key = fromEffFnAff <<< setImpl conn key
+get  :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+get conn = fromEffFnAff <<< getImpl conn
+incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
+incr conn = fromEffFnAff <<< incrImpl conn
+keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
+keys conn = fromEffFnAff <<< keysImpl conn
 
 --------------------------------------------------------------------------------
 

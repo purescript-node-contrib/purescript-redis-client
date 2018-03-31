@@ -4,24 +4,33 @@ var Control_Monad_Aff = require('../Control.Monad.Aff');
 var Data_Maybe = require('../Data.Maybe');
 var ioredis = require('ioredis');
 
-exports.connect = function(connstr) {
-  return function(onSuccess, onError) {
-    onSuccess(new ioredis(connstr));
-    return Control_Monad_Aff.nonCanceler;
+exports.connectImpl = function(connstr) {
+  return function(onError, onSuccess) {
+    var redis = new ioredis(connstr);
+    redis.connect(function() {
+      onSuccess(redis);
+    });
+    return function(cancelError, cancelerError, cancelerSuccess) {
+      redis.disconnect();
+      cancelerSuccess();
+    };
   };
 };
 
-exports.disconnect = function(conn) {
-  return function(onSuccess, onError) {
+
+exports.disconnectImpl = function(conn) {
+  return function(onError, onSuccess) {
     conn.disconnect();
     onSuccess();
-    return Control_Monad_Aff.nonCanceler;
+    return function(cancelError, cancelerError, cancelerSuccess) {
+      cancelerSuccess();
+    };
   };
 };
 
-exports.del = function(conn) {
+exports.delImpl = function(conn) {
   return function(keys) {
-    return function(onSuccess, onError) {
+    return function(onError, onSuccess) {
       if (keys.length === 0) {
         onSuccess();
       } else {
@@ -33,15 +42,17 @@ exports.del = function(conn) {
           onSuccess();
         }]));
       }
-      return Control_Monad_Aff.nonCanceler;
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelerSuccess();
+      };
     };
   };
 };
 
-exports.set = function(conn) {
+exports.setImpl = function(conn) {
   return function(key) {
     return function(value) {
-      return function(onSuccess, onError) {
+      return function(onError, onSuccess) {
         conn.set(key, value, function(err) {
           if (err !== null) {
             onError(err);
@@ -49,15 +60,17 @@ exports.set = function(conn) {
           }
           onSuccess();
         });
-        return Control_Monad_Aff.nonCanceler;
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelerSuccess();
+        };
       };
     };
   };
 };
 
-exports.get = function(conn) {
+exports.getImpl = function(conn) {
   return function(key) {
-    return function(onSuccess, onError) {
+    return function(onError, onSuccess) {
       conn.getBuffer(key, function(err, value) {
         if (err !== null) {
           onError(err);
@@ -68,14 +81,16 @@ exports.get = function(conn) {
           : new Data_Maybe.Just(value);
         onSuccess(valueMaybe);
       });
-      return Control_Monad_Aff.nonCanceler;
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelerSuccess();
+      };
     };
   };
 };
 
-exports.incr = function(conn) {
+exports.incrImpl = function(conn) {
   return function(key) {
-    return function(onSuccess, onError) {
+    return function(onError, onSuccess) {
       conn.incr(key, function(err, value) {
         if (err !== null) {
           onError(err);
@@ -83,14 +98,16 @@ exports.incr = function(conn) {
         }
         onSuccess(value);
       });
-      return Control_Monad_Aff.nonCanceler;
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelerSuccess();
+      };
     };
   };
 };
 
-exports.keys = function(conn) {
+exports.keysImpl = function(conn) {
   return function(pattern) {
-    return function(onSuccess, onError) {
+    return function(onError, onSuccess) {
       conn.keysBuffer(pattern, function(err, value) {
         if (err !== null) {
           onError(err);
@@ -98,7 +115,9 @@ exports.keys = function(conn) {
         }
         onSuccess(value);
       });
-      return Control_Monad_Aff.nonCanceler;
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelerSuccess();
+      };
     };
   };
 };

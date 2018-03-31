@@ -14,7 +14,7 @@ import Test.Unit.Main (runTest)
 
 main = runTest do
   test "Database.Redis" do
-    Redis.withConnection "redis://localhost" \redis -> do
+    Redis.withConnection "redis://localhost:6379" \redis -> do
       let key1 = b "purescript-redis:test:key1"
       let key2 = b "purescript-redis:test:key2"
 
@@ -34,4 +34,4 @@ main = runTest do
         got <- Redis.keys redis (b "*")
         Assert.equal (sort [key1, key2]) (sort got)
   where
-  b = ByteString.fromString `flip` UTF8
+  b = ByteString.toUTF8
