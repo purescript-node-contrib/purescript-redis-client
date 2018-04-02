@@ -69,7 +69,6 @@ foreign import keysImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis 
 
 del  :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
-
 set
   :: ∀ eff
   . Connection
@@ -80,8 +79,8 @@ set
   -> Aff (redis :: REDIS | eff) Unit
 set conn key value expire write = fromEffFnAff $ setImpl conn key value expire' write'
   where
-  serExpire (PX v) = { unit: "PX", value: v}
-  serExpire (EX v) = { unit: "EX", value: v}
+  serExpire (PX v) = { unit: "PX", value: v }
+  serExpire (EX v) = { unit: "EX", value: v }
   serWrite NX = "NX"
   serWrite XX = "XX"
   expire' = toNullable $ serExpire <$> expire
