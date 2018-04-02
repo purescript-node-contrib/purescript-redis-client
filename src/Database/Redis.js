@@ -52,16 +52,30 @@ exports.delImpl = function(conn) {
 exports.setImpl = function(conn) {
   return function(key) {
     return function(value) {
-      return function(onError, onSuccess) {
-        conn.set(key, value, function(err) {
-          if (err !== null) {
-            onError(err);
-            return;
-          }
-          onSuccess();
-        });
-        return function(cancelError, cancelerError, cancelerSuccess) {
-          cancelerSuccess();
+      return function(expire) {
+        return function(write) {
+          return function(onError, onSuccess) {
+            var handler = function(err) {
+              if (err !== null) {
+                onError(err);
+                return;
+              }
+              onSuccess();
+            };
+            var args = [key, value];
+            if(expire !== null) {
+              args.push(expire.unit);
+              args.push(expire.value);
+            }
+            if(write !== null) {
+              args.push(write);
+            }
+            args.push(handler);
+            conn.set.apply(conn, args);
+            return function(cancelError, cancelerError, cancelerSuccess) {
+              cancelerSuccess();
+            };
+          };
         };
       };
     };

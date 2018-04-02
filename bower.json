@@ -11,7 +11,8 @@
     "purescript-bytestrings": "^6.0.0",
     "purescript-either": "^3.1.0",
     "purescript-maybe": "^3.0.0",
-    "purescript-prelude": "^3.1.0"
+    "purescript-prelude": "^3.1.0",
+    "purescript-nullable": "^3.0.0"
   },
   "devDependencies": {
     "purescript-test-unit": "^13.0.0",
