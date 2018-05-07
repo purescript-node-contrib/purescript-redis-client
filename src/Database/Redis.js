@@ -16,7 +16,6 @@ exports.connectImpl = function(connstr) {
   };
 };
 
-
 exports.disconnectImpl = function(conn) {
   return function(onError, onSuccess) {
     conn.disconnect();
@@ -161,3 +160,77 @@ exports.mgetImpl = function(conn) {
     };
   };
 };
+
+exports.zaddImpl = function(conn) {
+  return function(key) {
+    return function(writeMode) {
+      return function(returnMode) {
+        return function(members) {
+          return function(onError, onSuccess) {
+            var args = [key];
+            if(writeMode !== null) {
+              args.push(writeMode);
+            }
+            if(returnMode !== null) {
+              args.push(returnMode);
+            }
+            members.forEach(function(i) {
+              args.push(i.score);
+              args.push(i.member);
+            });
+            var handler = function(err, val) {
+              if (err !== null) {
+                onError(err);
+                return;
+              }
+              onSuccess(val);
+            };
+            args.push(handler);
+            conn.zaddBuffer.apply(conn, args);
+            return function(cancelError, cancelerError, cancelerSuccess) {
+              cancelError();
+            };
+          };
+        };
+      };
+    };
+  };
+};
+
+
+exports.zrangeImpl = function(conn) {
+  return function(key) {
+    return function(start) {
+      return function(stop) {
+        return function(onError, onSuccess) {
+          var args = [key, start, stop, 'WITHSCORES'];
+          var handler = function(err, val) {
+            var curr = {}, result = [];
+            if (err !== null) {
+              onError(err);
+              return;
+            }
+            val.forEach(function(i) {
+              if(curr.member === undefined) {
+                curr.member = i;
+              } else {
+                // XXX: I'm not sure if this is safe parsing
+                curr.score = parseFloat(i);
+                result.push(curr);
+                curr = {};
+              }
+            });
+            onSuccess(result);
+          };
+          args.push(handler);
+          conn.zrangeBuffer.apply(conn, args);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
+      };
+    };
+  };
+};
+
+

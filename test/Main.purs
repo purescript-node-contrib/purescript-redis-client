@@ -9,7 +9,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Except (catchError, throwError)
-import Data.Array (sort)
+import Data.Array (sort, take)
 import Data.ByteString (ByteString)
 import Data.ByteString as ByteString
 import Data.Foldable (length)
@@ -114,3 +114,17 @@ main = runTest $ do
       got <- Redis.mget conn [key1, key2]
       Assert.equal [b "1", b "1"] got
 
+    test addr "zadd and zrange" $ \conn -> do
+      let
+        testSet = b "testSet"
+        members =
+          [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+      count <- Redis.zadd
+        conn
+        testSet
+        (Redis.ZaddAll Redis.Added)
+        members
+      Assert.equal count 3
+      got <- Redis.zrange conn testSet 0 2
+      Assert.equal (map _.member <<< take 3 $ members) (map _.member got)
+      Assert.equal (map _.score <<< take 3 $ members) (map _.score got)

@@ -3,6 +3,8 @@ module Database.Redis
   , Connection
   , Expire(..)
   , Write(..)
+  , Zadd(..)
+  , ZaddReturn(..)
 
   , connect
   , disconnect
@@ -15,6 +17,8 @@ module Database.Redis
   , incr
   , keys
   , mget
+  , zadd
+  , zrange
   ) where
 
 import Prelude
@@ -22,9 +26,10 @@ import Prelude
 import Control.Monad.Aff (Aff, bracket)
 import Control.Monad.Aff.Compat (EffFnAff, fromEffFnAff)
 import Control.Monad.Eff (kind Effect)
-import Data.ByteString (ByteString)
-import Data.Maybe (Maybe)
+import Data.ByteString (ByteString, toUTF8)
+import Data.Maybe (Maybe(..))
 import Data.Nullable (Nullable, toNullable)
+import Data.Tuple (Tuple(..))
 
 --------------------------------------------------------------------------------
 
@@ -54,6 +59,10 @@ disconnect = fromEffFnAff <<< disconnectImpl
 data Expire = PX Int | EX Int
 data Write = NX | XX
 
+serWrite :: Write -> ByteString
+serWrite NX = toUTF8 "NX"
+serWrite XX = toUTF8 "XX"
+
 foreign import delImpl  :: ∀ eff. Connection -> Array ByteString -> EffFnAff (redis :: REDIS | eff) Unit
 foreign import flushdbImpl :: ∀ eff. Connection -> EffFnAff (redis :: REDIS | eff) Unit
 foreign import setImpl
@@ -61,13 +70,17 @@ foreign import setImpl
   . Connection
   -> ByteString
   -> ByteString
-  -> Nullable { unit :: String, value :: Int }
-  -> Nullable String
+  -> Nullable { unit :: ByteString, value :: Int }
+  -> Nullable ByteString
   -> EffFnAff (redis :: REDIS | eff) Unit
 foreign import getImpl  :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
 foreign import incrImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) Int
 foreign import keysImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
 foreign import mgetImpl :: ∀ eff. Connection -> Array ByteString -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+-- | ZADD key [NX|XX] [CH]
+-- | INCR mode would be supported by `zaddIncrImpl`
+foreign import zaddImpl :: ∀ eff. Connection -> ByteString -> Nullable ByteString -> Nullable ByteString -> Array SortedSetItem -> EffFnAff (redis :: REDIS | eff) Int
+foreign import zrangeImpl :: ∀ eff. Connection -> ByteString -> Int -> Int -> EffFnAff (redis :: REDIS | eff) (Array SortedSetItem)
 
 del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
@@ -83,10 +96,8 @@ set
   -> Aff (redis :: REDIS | eff) Unit
 set conn key value expire write = fromEffFnAff $ setImpl conn key value expire' write'
   where
-  serExpire (PX v) = { unit: "PX", value: v }
-  serExpire (EX v) = { unit: "EX", value: v }
-  serWrite NX = "NX"
-  serWrite XX = "XX"
+  serExpire (PX v) = { unit: toUTF8 "PX", value: v }
+  serExpire (EX v) = { unit: toUTF8 "EX", value: v }
   expire' = toNullable $ serExpire <$> expire
   write' = toNullable $ serWrite <$> write
 get  :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
@@ -98,3 +109,36 @@ keys conn = fromEffFnAff <<< keysImpl conn
 mget :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
 mget conn = fromEffFnAff <<< mgetImpl conn
 
+type SortedSetItem = { member :: ByteString, score :: Number }
+data ZaddReturn = Changed | Added
+data Zadd = ZaddAll ZaddReturn | ZaddRestrict Write
+-- | This API allows you to build only these
+-- | combination of write modes and return values:
+-- | ```
+-- | ZADD key CH score member [score member]
+-- | ZADD key score member [score member]
+-- | ZADD key XX CH score member [score member]
+-- | ZADD key NX score member [score member]
+zadd
+  :: forall t81
+   . Connection
+  -> ByteString
+  -> Zadd
+  -> Array SortedSetItem
+  -> Aff ( redis :: REDIS | t81) Int
+zadd conn key mode = fromEffFnAff <<< zaddImpl conn key write' return'
+  where
+  Tuple write' return' = case mode of
+    ZaddAll Changed -> Tuple (toNullable Nothing) (toNullable $ Just (toUTF8 "CH"))
+    ZaddAll Added -> Tuple (toNullable Nothing) (toNullable $ Nothing)
+    ZaddRestrict XX -> Tuple (toNullable $ Just (serWrite XX)) (toNullable $ Just (toUTF8 "CH"))
+    ZaddRestrict NX -> Tuple (toNullable $ Just (serWrite NX)) (toNullable Nothing)
+
+zrange
+  :: forall t10
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> Aff (redis :: REDIS | t10) (Array SortedSetItem)
+zrange conn key start = fromEffFnAff <<< zrangeImpl conn key start
