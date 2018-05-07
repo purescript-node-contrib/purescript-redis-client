@@ -11,8 +11,7 @@ exports.connectImpl = function(connstr) {
       onSuccess(redis);
     });
     return function(cancelError, cancelerError, cancelerSuccess) {
-      redis.disconnect();
-      cancelerSuccess();
+      cancelError();
     };
   };
 };
@@ -23,7 +22,17 @@ exports.disconnectImpl = function(conn) {
     conn.disconnect();
     onSuccess();
     return function(cancelError, cancelerError, cancelerSuccess) {
-      cancelerSuccess();
+      cancelError();
+    };
+  };
+};
+
+exports.flushdbImpl = function(conn) {
+  return function(onError, onSuccess) {
+    conn.flushdb();
+    onSuccess();
+    return function(cancelError, cancelerError, cancelerSuccess) {
+      cancelError();
     };
   };
 };
@@ -43,7 +52,7 @@ exports.delImpl = function(conn) {
         }]));
       }
       return function(cancelError, cancelerError, cancelerSuccess) {
-        cancelerSuccess();
+        cancelError();
       };
     };
   };
@@ -73,7 +82,7 @@ exports.setImpl = function(conn) {
             args.push(handler);
             conn.set.apply(conn, args);
             return function(cancelError, cancelerError, cancelerSuccess) {
-              cancelerSuccess();
+              cancelError();
             };
           };
         };
@@ -96,7 +105,7 @@ exports.getImpl = function(conn) {
         onSuccess(valueMaybe);
       });
       return function(cancelError, cancelerError, cancelerSuccess) {
-        cancelerSuccess();
+        cancelError();
       };
     };
   };
@@ -113,7 +122,7 @@ exports.incrImpl = function(conn) {
         onSuccess(value);
       });
       return function(cancelError, cancelerError, cancelerSuccess) {
-        cancelerSuccess();
+        cancelError();
       };
     };
   };
@@ -130,7 +139,24 @@ exports.keysImpl = function(conn) {
         onSuccess(value);
       });
       return function(cancelError, cancelerError, cancelerSuccess) {
-        cancelerSuccess();
+        cancelError();
+      };
+    };
+  };
+};
+
+exports.mgetImpl = function(conn) {
+  return function(keys) {
+    return function(onError, onSuccess) {
+      conn.mgetBuffer(keys, function(err, value) {
+        if (err !== null) {
+          onError(err);
+          return;
+        }
+        onSuccess(value);
+      });
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelError();
       };
     };
   };

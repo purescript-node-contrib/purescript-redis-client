@@ -10,19 +10,19 @@ module Database.Redis
 
   , del
   , set
+  , flushdb
   , get
   , incr
   , keys
+  , mget
   ) where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, bracket)
 import Control.Monad.Aff.Compat (EffFnAff, fromEffFnAff)
 import Control.Monad.Eff (kind Effect)
-import Control.Monad.Error.Class (class MonadError, catchError, throwError)
 import Data.ByteString (ByteString)
-import Data.Either (Either(..), either)
 import Data.Maybe (Maybe)
 import Data.Nullable (Nullable, toNullable)
 
@@ -55,6 +55,7 @@ data Expire = PX Int | EX Int
 data Write = NX | XX
 
 foreign import delImpl  :: ∀ eff. Connection -> Array ByteString -> EffFnAff (redis :: REDIS | eff) Unit
+foreign import flushdbImpl :: ∀ eff. Connection -> EffFnAff (redis :: REDIS | eff) Unit
 foreign import setImpl
   :: ∀ eff
   . Connection
@@ -66,9 +67,12 @@ foreign import setImpl
 foreign import getImpl  :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
 foreign import incrImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) Int
 foreign import keysImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+foreign import mgetImpl :: ∀ eff. Connection -> Array ByteString -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
 
-del  :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
+del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
+flushdb :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
+flushdb = fromEffFnAff <<< flushdbImpl
 set
   :: ∀ eff
   . Connection
@@ -91,18 +95,6 @@ incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
 incr conn = fromEffFnAff <<< incrImpl conn
 keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
 keys conn = fromEffFnAff <<< keysImpl conn
+mget :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
+mget conn = fromEffFnAff <<< mgetImpl conn
 
---------------------------------------------------------------------------------
-
-bracket
-  :: ∀ error monad resource result
-   . (MonadError error monad)
-  => monad resource
-  -> (resource -> monad Unit)
-  -> (resource -> monad result)
-  -> monad result
-bracket acquire release kleisli = do
-  resource <- acquire
-  result <- (Right <$> kleisli resource) `catchError` (pure <<< Left)
-  release resource
-  either throwError pure result
