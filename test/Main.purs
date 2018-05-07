@@ -9,7 +9,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Except (catchError, throwError)
-import Data.Array (sort, take)
+import Data.Array (filter, sort, take)
 import Data.ByteString (ByteString)
 import Data.ByteString as ByteString
 import Data.Foldable (length)
@@ -125,6 +125,68 @@ main = runTest $ do
         (Redis.ZaddAll Redis.Added)
         members
       Assert.equal count 3
-      got <- Redis.zrange conn testSet 0 2
-      Assert.equal (map _.member <<< take 3 $ members) (map _.member got)
-      Assert.equal (map _.score <<< take 3 $ members) (map _.score got)
+      got <- Redis.zrange conn testSet 0 1
+      Assert.equal (map _.member <<< take 2 $ members) (map _.member got)
+      Assert.equal (map _.score <<< take 2 $ members) (map _.score got)
+
+    test addr "zadd XX and zrange" $ \conn -> do
+      let
+        testSet = b "testSet"
+        members =
+          [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+      count <- Redis.zadd
+        conn
+        testSet
+        (Redis.ZaddAll Redis.Added)
+        members
+
+      let
+        updated =
+          [ { member: b "m1", score: 1.2}
+          , { member: b "m2", score: 2.2}
+          , { member: b "m3", score: 3.1}
+          , { member: b "new", score: 3.2 }
+          ]
+      count <- Redis.zadd
+        conn
+        testSet
+        (Redis.ZaddRestrict Redis.XX)
+        updated
+
+      Assert.equal 2 count
+      got <- Redis.zrange conn testSet 0 100
+      -- | We should only modify existing items and not add new ones
+      let updated' = filter ((_ /= b "new") <<< _.member ) updated
+      Assert.equal (map _.member updated') (map _.member got)
+      Assert.equal (map _.score updated') (map _.score got)
+
+    test addr "zadd NX and zrange" $ \conn -> do
+      let
+        testSet = b "testSet"
+        members =
+          [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+      count <- Redis.zadd
+        conn
+        testSet
+        (Redis.ZaddAll Redis.Added)
+        members
+
+      let
+        updated =
+          [ { member: b "m1", score: 1.2}
+          , { member: b "m2", score: 2.2}
+          , { member: b "m3", score: 3.1}
+          , { member: b "new", score: 3.2 }
+          ]
+      count <- Redis.zadd
+        conn
+        testSet
+        (Redis.ZaddRestrict Redis.NX)
+        updated
+
+      Assert.equal 1 count
+      got <- Redis.zrange conn testSet 0 100
+      -- | We should only add new items and not modify existing ones
+      let updated' = members <> [{ member: b "new", score: 3.2 }]
+      Assert.equal (map _.member updated') (map _.member got)
+      Assert.equal (map _.score updated') (map _.score got)
