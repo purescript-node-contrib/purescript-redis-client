@@ -7,17 +7,18 @@ module Database.Redis
   , ZaddReturn(..)
 
   , connect
-  , disconnect
-  , withConnection
-
   , del
-  , set
+  , disconnect
   , flushdb
   , get
   , incr
   , keys
   , mget
+  , set
+  , withConnection
   , zadd
+  , zrank
+  , zincrby
   , zrange
   ) where
 
@@ -28,7 +29,7 @@ import Control.Monad.Aff.Compat (EffFnAff, fromEffFnAff)
 import Control.Monad.Eff (kind Effect)
 import Data.ByteString (ByteString, toUTF8)
 import Data.Maybe (Maybe(..))
-import Data.Nullable (Nullable, toNullable)
+import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
 
 --------------------------------------------------------------------------------
@@ -63,8 +64,15 @@ serWrite :: Write -> ByteString
 serWrite NX = toUTF8 "NX"
 serWrite XX = toUTF8 "XX"
 
-foreign import delImpl  :: ∀ eff. Connection -> Array ByteString -> EffFnAff (redis :: REDIS | eff) Unit
-foreign import flushdbImpl :: ∀ eff. Connection -> EffFnAff (redis :: REDIS | eff) Unit
+foreign import delImpl
+  :: ∀ eff
+   . Connection
+  -> Array ByteString
+  -> EffFnAff (redis :: REDIS | eff) Unit
+foreign import flushdbImpl
+  :: ∀ eff
+   . Connection
+  -> EffFnAff (redis :: REDIS | eff) Unit
 foreign import setImpl
   :: ∀ eff
   . Connection
@@ -73,14 +81,56 @@ foreign import setImpl
   -> Nullable { unit :: ByteString, value :: Int }
   -> Nullable ByteString
   -> EffFnAff (redis :: REDIS | eff) Unit
-foreign import getImpl  :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
-foreign import incrImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) Int
-foreign import keysImpl :: ∀ eff. Connection -> ByteString -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
-foreign import mgetImpl :: ∀ eff. Connection -> Array ByteString -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+foreign import getImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
+foreign import incrImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) Int
+foreign import keysImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+foreign import mgetImpl
+  :: ∀ eff
+   . Connection
+  -> Array ByteString
+  -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
 -- | ZADD key [NX|XX] [CH]
 -- | INCR mode would be supported by `zaddIncrImpl`
-foreign import zaddImpl :: ∀ eff. Connection -> ByteString -> Nullable ByteString -> Nullable ByteString -> Array SortedSetItem -> EffFnAff (redis :: REDIS | eff) Int
-foreign import zrangeImpl :: ∀ eff. Connection -> ByteString -> Int -> Int -> EffFnAff (redis :: REDIS | eff) (Array SortedSetItem)
+foreign import zaddImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Nullable ByteString
+  -> Nullable ByteString
+  -> Array SortedSetItem
+  -> EffFnAff (redis :: REDIS | eff) Int
+foreign import zrangeImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> EffFnAff (redis :: REDIS | eff) (Array SortedSetItem)
+foreign import zincrbyImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Number
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) Number
+foreign import zrankImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) (Nullable Int)
 
 del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
@@ -133,7 +183,6 @@ zadd conn key mode = fromEffFnAff <<< zaddImpl conn key write' return'
     ZaddAll Added -> Tuple (toNullable Nothing) (toNullable $ Nothing)
     ZaddRestrict XX -> Tuple (toNullable $ Just (serWrite XX)) (toNullable $ Just (toUTF8 "CH"))
     ZaddRestrict NX -> Tuple (toNullable $ Just (serWrite NX)) (toNullable Nothing)
-
 zrange
   :: forall t10
    . Connection
@@ -142,3 +191,18 @@ zrange
   -> Int
   -> Aff (redis :: REDIS | t10) (Array SortedSetItem)
 zrange conn key start = fromEffFnAff <<< zrangeImpl conn key start
+zincrby
+  :: forall t10
+   . Connection
+  -> ByteString
+  -> Number
+  -> ByteString
+  -> Aff (redis :: REDIS | t10) Number
+zincrby conn key increment = fromEffFnAff <<< zincrbyImpl conn key increment
+zrank
+  :: forall t10
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> Aff (redis :: REDIS | t10) (Maybe Int)
+zrank conn key member = toMaybe <$> (fromEffFnAff $ zrankImpl conn key member)

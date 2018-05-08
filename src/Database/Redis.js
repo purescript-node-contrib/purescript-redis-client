@@ -197,7 +197,6 @@ exports.zaddImpl = function(conn) {
   };
 };
 
-
 exports.zrangeImpl = function(conn) {
   return function(key) {
     return function(start) {
@@ -233,4 +232,52 @@ exports.zrangeImpl = function(conn) {
   };
 };
 
+exports.zincrbyImpl = function(conn) {
+  return function(key) {
+    return function(increment) {
+      return function(member) {
+        return function(onError, onSuccess) {
+          var args = [key, increment, member];
+          var handler = function(err, val) {
+            if (err !== null) {
+              onError(err);
+              return;
+            }
+            onSuccess(parseFloat(val));
+          };
+          args.push(handler);
+          conn.zincrbyBuffer.apply(conn, args);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
+      };
+    };
+  };
+};
 
+exports.zrankImpl = function(conn) {
+  return function(key) {
+    return function(member) {
+      return function(onError, onSuccess) {
+        var args = [key, member];
+        var handler = function(err, val) {
+          if (err !== null) {
+            onError(err);
+            return;
+          }
+          if (val !== null) {
+            onSuccess(parseFloat(val));
+            return;
+          }
+          onSuccess(null);
+        };
+        args.push(handler);
+        conn.zrankBuffer.apply(conn, args);
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
