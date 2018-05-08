@@ -202,7 +202,6 @@ exports.zrangeImpl = function(conn) {
     return function(start) {
       return function(stop) {
         return function(onError, onSuccess) {
-          var args = [key, start, stop, 'WITHSCORES'];
           var handler = function(err, val) {
             var curr = {}, result = [];
             if (err !== null) {
@@ -221,8 +220,7 @@ exports.zrangeImpl = function(conn) {
             });
             onSuccess(result);
           };
-          args.push(handler);
-          conn.zrangeBuffer.apply(conn, args);
+          conn.zrangeBuffer.apply(conn, [key, start, stop, 'WITHSCORES', handler]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
           };
@@ -237,7 +235,6 @@ exports.zincrbyImpl = function(conn) {
     return function(increment) {
       return function(member) {
         return function(onError, onSuccess) {
-          var args = [key, increment, member];
           var handler = function(err, val) {
             if (err !== null) {
               onError(err);
@@ -245,8 +242,7 @@ exports.zincrbyImpl = function(conn) {
             }
             onSuccess(parseFloat(val));
           };
-          args.push(handler);
-          conn.zincrbyBuffer.apply(conn, args);
+          conn.zincrbyBuffer.apply(conn, [key, increment, member, handler]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
           };
@@ -260,20 +256,18 @@ exports.zrankImpl = function(conn) {
   return function(key) {
     return function(member) {
       return function(onError, onSuccess) {
-        var args = [key, member];
         var handler = function(err, val) {
           if (err !== null) {
             onError(err);
             return;
           }
           if (val !== null) {
-            onSuccess(parseFloat(val));
+            onSuccess(parseInt(val));
             return;
           }
           onSuccess(null);
         };
-        args.push(handler);
-        conn.zrankBuffer.apply(conn, args);
+        conn.zrankBuffer.apply(conn, [key, member, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
         };
