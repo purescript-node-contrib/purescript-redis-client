@@ -67,6 +67,10 @@ serWrite :: Write -> ByteString
 serWrite NX = toUTF8 "NX"
 serWrite XX = toUTF8 "XX"
 
+type SortedSetItem = { member :: ByteString, score :: Number }
+data ZaddReturn = Changed | Added
+data Zadd = ZaddAll ZaddReturn | ZaddRestrict Write
+
 foreign import delImpl
   :: ∀ eff
    . Connection
@@ -75,14 +79,6 @@ foreign import delImpl
 foreign import flushdbImpl
   :: ∀ eff
    . Connection
-  -> EffFnAff (redis :: REDIS | eff) Unit
-foreign import setImpl
-  :: ∀ eff
-  . Connection
-  -> ByteString
-  -> ByteString
-  -> Nullable { unit :: ByteString, value :: Int }
-  -> Nullable ByteString
   -> EffFnAff (redis :: REDIS | eff) Unit
 foreign import getImpl
   :: ∀ eff
@@ -122,6 +118,14 @@ foreign import mgetImpl
    . Connection
   -> Array ByteString
   -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+foreign import setImpl
+  :: ∀ eff
+  . Connection
+  -> ByteString
+  -> ByteString
+  -> Nullable { unit :: ByteString, value :: Int }
+  -> Nullable ByteString
+  -> EffFnAff (redis :: REDIS | eff) Unit
 -- | ZADD key [NX|XX] [CH]
 -- | INCR mode would be supported by `zaddIncrImpl`
 foreign import zaddImpl
@@ -157,6 +161,24 @@ del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Uni
 del conn = fromEffFnAff <<< delImpl conn
 flushdb :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
 flushdb = fromEffFnAff <<< flushdbImpl
+get  :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+get conn = fromEffFnAff <<< getImpl conn
+incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
+incr conn = fromEffFnAff <<< incrImpl conn
+keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
+keys conn = fromEffFnAff <<< keysImpl conn
+lpop :: forall t10 . Connection -> ByteString -> Aff (redis :: REDIS | t10) (Maybe ByteString)
+lpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
+lpush :: forall t10 . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | t10) Int
+lpush conn key = fromEffFnAff <<< lpushImpl conn key
+lrange :: forall t10 . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | t10) (Array ByteString)
+lrange conn key start = fromEffFnAff <<< lrangeImpl conn key start
+mget :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
+mget conn = fromEffFnAff <<< mgetImpl conn
+rpop :: forall t10 . Connection -> ByteString -> Aff (redis :: REDIS | t10) (Maybe ByteString)
+rpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
+rpush :: forall t10 . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | t10) Int
+rpush conn key = fromEffFnAff <<< lpushImpl conn key
 set
   :: ∀ eff
   . Connection
@@ -171,25 +193,6 @@ set conn key value expire write = fromEffFnAff $ setImpl conn key value expire' 
   serExpire (EX v) = { unit: toUTF8 "EX", value: v }
   expire' = toNullable $ serExpire <$> expire
   write' = toNullable $ serWrite <$> write
-get  :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-get conn = fromEffFnAff <<< getImpl conn
-incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
-incr conn = fromEffFnAff <<< incrImpl conn
-keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
-keys conn = fromEffFnAff <<< keysImpl conn
-mget :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
-mget conn = fromEffFnAff <<< mgetImpl conn
-lpop :: forall t10 . Connection -> ByteString -> Aff (redis :: REDIS | t10) (Maybe ByteString)
-lpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
-lpush :: forall t10 . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | t10) Int
-lpush conn key = fromEffFnAff <<< lpushImpl conn key
-lrange :: forall t10 . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | t10) (Array ByteString)
-lrange conn key start = fromEffFnAff <<< lrangeImpl conn key start
-
-
-type SortedSetItem = { member :: ByteString, score :: Number }
-data ZaddReturn = Changed | Added
-data Zadd = ZaddAll ZaddReturn | ZaddRestrict Write
 -- | This API allows you to build only these
 -- | combination of write modes and return values:
 -- | ```
