@@ -218,7 +218,8 @@ main = runTest $ do
       let
         testList = b "testList"
         value1 = b "val1"
-        value2 = b "val1"
+        value2 = b "val2"
+        value3 = b "val3"
 
       test addr "lpush / lpop" $ \conn -> do
         void $ Redis.lpush conn testList value1
@@ -227,3 +228,12 @@ main = runTest $ do
         v1 <- Redis.lpop conn testList
         Assert.equal (Just value2) v2
         Assert.equal (Just value1) v1
+
+      test addr "lrange" $ \conn -> do
+        void $ Redis.lpush conn testList value3
+        void $ Redis.lpush conn testList value2
+        void $ Redis.lpush conn testList value1
+        a <- Redis.lrange conn testList 0 1
+        Assert.equal [value1, value2] a
+        b <- Redis.lrange conn testList (-3) (-1)
+        Assert.equal [value1, value2, value3] b

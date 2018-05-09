@@ -288,7 +288,6 @@ exports.lpopImpl = function(conn) {
           onSuccess(val);
           return;
         }
-        onSuccess(null);
       };
       conn.lpopBuffer.apply(conn, [key, handler]);
       return function(cancelError, cancelerError, cancelerSuccess) {
@@ -307,15 +306,33 @@ exports.lpushImpl = function(conn) {
             onError(err);
             return;
           }
-          if (val !== null) {
-            onSuccess(parseInt(val));
-            return;
-          }
-          onSuccess(null);
+          onSuccess(parseInt(val));
         };
         conn.lpushBuffer.apply(conn, [key, value, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
+        };
+      };
+    };
+  };
+};
+
+exports.lrangeImpl = function(conn) {
+  return function(key) {
+    return function(start) {
+      return function(end) {
+        return function(onError, onSuccess) {
+          var handler = function(err, val) {
+            if (err !== null) {
+              onError(err);
+              return;
+            }
+            onSuccess(val);
+          };
+          conn.lrangeBuffer.apply(conn, [key, start, end, handler]);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
         };
       };
     };

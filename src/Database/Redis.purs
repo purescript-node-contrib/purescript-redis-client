@@ -15,6 +15,7 @@ module Database.Redis
   , keys
   , lpop
   , lpush
+  , lrange
   , mget
   , set
   , withConnection
@@ -109,6 +110,13 @@ foreign import lpushImpl
   -> ByteString
   -> ByteString
   -> EffFnAff (redis :: REDIS | eff) Int
+foreign import lrangeImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
 foreign import mgetImpl
   :: ∀ eff
    . Connection
@@ -175,6 +183,9 @@ lpop :: forall t10 . Connection -> ByteString -> Aff (redis :: REDIS | t10) (May
 lpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
 lpush :: forall t10 . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | t10) Int
 lpush conn key = fromEffFnAff <<< lpushImpl conn key
+lrange :: forall t10 . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | t10) (Array ByteString)
+lrange conn key start = fromEffFnAff <<< lrangeImpl conn key start
+
 
 type SortedSetItem = { member :: ByteString, score :: Number }
 data ZaddReturn = Changed | Added
