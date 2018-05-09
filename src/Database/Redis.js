@@ -275,3 +275,50 @@ exports.zrankImpl = function(conn) {
     };
   };
 };
+
+exports.lpopImpl = function(conn) {
+  return function(key) {
+    return function(onError, onSuccess) {
+      var handler = function(err, val) {
+        if (err !== null) {
+          onError(err);
+          return;
+        }
+        if (val !== null) {
+          onSuccess(val);
+          return;
+        }
+        onSuccess(null);
+      };
+      conn.lpopBuffer.apply(conn, [key, handler]);
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelError();
+      };
+    };
+  };
+};
+
+exports.lpushImpl = function(conn) {
+  return function(key) {
+    return function(value) {
+      return function(onError, onSuccess) {
+        var handler = function(err, val) {
+          if (err !== null) {
+            onError(err);
+            return;
+          }
+          if (val !== null) {
+            onSuccess(parseInt(val));
+            return;
+          }
+          onSuccess(null);
+        };
+        conn.lpushBuffer.apply(conn, [key, value, handler]);
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
+

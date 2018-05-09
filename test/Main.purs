@@ -214,3 +214,16 @@ main = runTest $ do
         m1Rank'' <- Redis.zrank conn testSet member1.member
         Assert.equal (Just 1) m1Rank''
 
+    suite "list" do
+      let
+        testList = b "testList"
+        value1 = b "val1"
+        value2 = b "val1"
+
+      test addr "lpush / lpop" $ \conn -> do
+        void $ Redis.lpush conn testList value1
+        void $ Redis.lpush conn testList value2
+        v2 <- Redis.lpop conn testList
+        v1 <- Redis.lpop conn testList
+        Assert.equal (Just value2) v2
+        Assert.equal (Just value1) v1
