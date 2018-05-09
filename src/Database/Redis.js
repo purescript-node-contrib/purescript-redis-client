@@ -26,16 +26,6 @@ exports.disconnectImpl = function(conn) {
   };
 };
 
-exports.flushdbImpl = function(conn) {
-  return function(onError, onSuccess) {
-    conn.flushdb();
-    onSuccess();
-    return function(cancelError, cancelerError, cancelerSuccess) {
-      cancelError();
-    };
-  };
-};
-
 exports.delImpl = function(conn) {
   return function(keys) {
     return function(onError, onSuccess) {
@@ -57,35 +47,12 @@ exports.delImpl = function(conn) {
   };
 };
 
-exports.setImpl = function(conn) {
-  return function(key) {
-    return function(value) {
-      return function(expire) {
-        return function(write) {
-          return function(onError, onSuccess) {
-            var handler = function(err) {
-              if (err !== null) {
-                onError(err);
-                return;
-              }
-              onSuccess();
-            };
-            var args = [key, value];
-            if(expire !== null) {
-              args.push(expire.unit);
-              args.push(expire.value);
-            }
-            if(write !== null) {
-              args.push(write);
-            }
-            args.push(handler);
-            conn.set.apply(conn, args);
-            return function(cancelError, cancelerError, cancelerSuccess) {
-              cancelError();
-            };
-          };
-        };
-      };
+exports.flushdbImpl = function(conn) {
+  return function(onError, onSuccess) {
+    conn.flushdb();
+    onSuccess();
+    return function(cancelError, cancelerError, cancelerSuccess) {
+      cancelError();
     };
   };
 };
@@ -144,6 +111,69 @@ exports.keysImpl = function(conn) {
   };
 };
 
+exports.lpopImpl = function(conn) {
+  return function(key) {
+    return function(onError, onSuccess) {
+      var handler = function(err, val) {
+        if (err !== null) {
+          onError(err);
+          return;
+        }
+        if (val !== null) {
+          onSuccess(val);
+          return;
+        }
+      };
+      conn.lpopBuffer.apply(conn, [key, handler]);
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelError();
+      };
+    };
+  };
+};
+
+exports.lpushImpl = function(conn) {
+  return function(key) {
+    return function(value) {
+      return function(onError, onSuccess) {
+        var handler = function(err, val) {
+          if (err !== null) {
+            onError(err);
+            return;
+          }
+          onSuccess(parseInt(val));
+        };
+        conn.lpushBuffer.apply(conn, [key, value, handler]);
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
+
+exports.lrangeImpl = function(conn) {
+  return function(key) {
+    return function(start) {
+      return function(end) {
+        return function(onError, onSuccess) {
+          var handler = function(err, val) {
+            if (err !== null) {
+              onError(err);
+              return;
+            }
+            onSuccess(val);
+          };
+          conn.lrangeBuffer.apply(conn, [key, start, end, handler]);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
+      };
+    };
+  };
+};
+
 exports.mgetImpl = function(conn) {
   return function(keys) {
     return function(onError, onSuccess) {
@@ -160,6 +190,40 @@ exports.mgetImpl = function(conn) {
     };
   };
 };
+
+exports.setImpl = function(conn) {
+  return function(key) {
+    return function(value) {
+      return function(expire) {
+        return function(write) {
+          return function(onError, onSuccess) {
+            var handler = function(err) {
+              if (err !== null) {
+                onError(err);
+                return;
+              }
+              onSuccess();
+            };
+            var args = [key, value];
+            if(expire !== null) {
+              args.push(expire.unit);
+              args.push(expire.value);
+            }
+            if(write !== null) {
+              args.push(write);
+            }
+            args.push(handler);
+            conn.set.apply(conn, args);
+            return function(cancelError, cancelerError, cancelerSuccess) {
+              cancelError();
+            };
+          };
+        };
+      };
+    };
+  };
+};
+
 
 exports.zaddImpl = function(conn) {
   return function(key) {
@@ -275,67 +339,3 @@ exports.zrankImpl = function(conn) {
     };
   };
 };
-
-exports.lpopImpl = function(conn) {
-  return function(key) {
-    return function(onError, onSuccess) {
-      var handler = function(err, val) {
-        if (err !== null) {
-          onError(err);
-          return;
-        }
-        if (val !== null) {
-          onSuccess(val);
-          return;
-        }
-      };
-      conn.lpopBuffer.apply(conn, [key, handler]);
-      return function(cancelError, cancelerError, cancelerSuccess) {
-        cancelError();
-      };
-    };
-  };
-};
-
-exports.lpushImpl = function(conn) {
-  return function(key) {
-    return function(value) {
-      return function(onError, onSuccess) {
-        var handler = function(err, val) {
-          if (err !== null) {
-            onError(err);
-            return;
-          }
-          onSuccess(parseInt(val));
-        };
-        conn.lpushBuffer.apply(conn, [key, value, handler]);
-        return function(cancelError, cancelerError, cancelerSuccess) {
-          cancelError();
-        };
-      };
-    };
-  };
-};
-
-exports.lrangeImpl = function(conn) {
-  return function(key) {
-    return function(start) {
-      return function(end) {
-        return function(onError, onSuccess) {
-          var handler = function(err, val) {
-            if (err !== null) {
-              onError(err);
-              return;
-            }
-            onSuccess(val);
-          };
-          conn.lrangeBuffer.apply(conn, [key, start, end, handler]);
-          return function(cancelError, cancelerError, cancelerSuccess) {
-            cancelError();
-          };
-        };
-      };
-    };
-  };
-};
-
