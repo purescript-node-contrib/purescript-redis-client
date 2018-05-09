@@ -10,6 +10,8 @@ module Database.Redis
   , del
   , disconnect
   , flushdb
+  , hget
+  , hset
   , get
   , incr
   , keys
@@ -85,6 +87,19 @@ foreign import getImpl
    . Connection
   -> ByteString
   -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
+foreign import hgetImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) (Nullable ByteString)
+foreign import hsetImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) Int
 foreign import incrImpl
   :: ∀ eff
    . Connection
@@ -161,8 +176,12 @@ del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Uni
 del conn = fromEffFnAff <<< delImpl conn
 flushdb :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
 flushdb = fromEffFnAff <<< flushdbImpl
-get  :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+get :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 get conn = fromEffFnAff <<< getImpl conn
+hget :: ∀ eff. Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+hget conn key field = toMaybe <$> (fromEffFnAff $ hgetImpl conn key field)
+hset :: ∀ eff. Connection -> ByteString -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
+hset conn key field = fromEffFnAff <<< hsetImpl conn key field
 incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
 incr conn = fromEffFnAff <<< incrImpl conn
 keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)

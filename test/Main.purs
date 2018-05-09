@@ -214,6 +214,30 @@ main = runTest $ do
         m1Rank'' <- Redis.zrank conn testSet member1.member
         Assert.equal (Just 1) m1Rank''
 
+    suite "hash" do
+      let
+        testHash = b "testHash"
+        value1 = { key: b "key1", value: b "val1" }
+        value2 = { key: b "key2", value: b "val2" }
+        value3 = { key: b "key3", value: b "val3" }
+      test addr "hset return value" $ \conn -> do
+        s1 <- Redis.hset conn testHash value1.key value1.value
+        s2 <- Redis.hset conn testHash value2.key value2.value
+        s2' <- Redis.hset conn testHash value2.key value2.value
+        Assert.equal 1 s1
+        Assert.equal 1 s2
+        Assert.equal 0 s2'
+
+      test addr "hset / hget" $ \conn -> do
+        s1 <- Redis.hset conn testHash value1.key value1.value
+        s2 <- Redis.hset conn testHash value2.key value2.value
+
+        v1 <- Redis.hget conn testHash value1.key
+        v2 <- Redis.hget conn testHash value2.key
+
+        Assert.equal (Just value1.value) v1
+        Assert.equal (Just value2.value) v2
+
     suite "list" do
       let
         testList = b "testList"

@@ -1,6 +1,5 @@
 'use strict';
 
-var Control_Monad_Aff = require('../Control.Monad.Aff');
 var Data_Maybe = require('../Data.Maybe');
 var ioredis = require('ioredis');
 
@@ -72,6 +71,46 @@ exports.getImpl = function(conn) {
       });
       return function(cancelError, cancelerError, cancelerSuccess) {
         cancelError();
+      };
+    };
+  };
+};
+
+exports.hgetImpl = function(conn) {
+  return function(key) {
+    return function(member) {
+      return function(onError, onSuccess) {
+        conn.hgetBuffer(key, member, function(err, value) {
+          if (err !== null) {
+            onError(err);
+            return;
+          }
+          onSuccess(value);
+        });
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
+
+exports.hsetImpl = function(conn) {
+  return function(key) {
+    return function(field) {
+      return function(value) {
+        return function(onError, onSuccess) {
+          conn.hsetBuffer(key, field, value, function(err, value) {
+            if (err !== null) {
+              onError(err);
+              return;
+            }
+            onSuccess(parseInt(value));
+          });
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
       };
     };
   };
