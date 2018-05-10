@@ -11,6 +11,7 @@ module Database.Redis
   , disconnect
   , flushdb
   , hget
+  , hgetall
   , hset
   , get
   , incr
@@ -87,6 +88,13 @@ foreign import getImpl
    . Connection
   -> ByteString
   -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
+foreign import hgetallImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> EffFnAff
+      (redis :: REDIS | eff)
+      (Array { key :: ByteString, value :: ByteString })
 foreign import hgetImpl
   :: ∀ eff
    . Connection
@@ -180,6 +188,8 @@ get :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe By
 get conn = fromEffFnAff <<< getImpl conn
 hget :: ∀ eff. Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 hget conn key field = toMaybe <$> (fromEffFnAff $ hgetImpl conn key field)
+hgetall :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array {key :: ByteString, value :: ByteString})
+hgetall conn = fromEffFnAff <<< hgetallImpl conn
 hset :: ∀ eff. Connection -> ByteString -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
 hset conn key field = fromEffFnAff <<< hsetImpl conn key field
 incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int

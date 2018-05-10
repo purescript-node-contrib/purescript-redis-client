@@ -3,6 +3,14 @@
 var Data_Maybe = require('../Data.Maybe');
 var ioredis = require('ioredis');
 
+ioredis.Command.setReplyTransformer('hgetall', function (result) {
+  var arr = [];
+  for (var i = 0; i < result.length; i += 2) {
+    arr.push({ key: result[i], value: result[i + 1] });
+  }
+  return arr;
+});
+
 exports.connectImpl = function(connstr) {
   return function(onError, onSuccess) {
     var redis = new ioredis(connstr);
@@ -76,11 +84,28 @@ exports.getImpl = function(conn) {
   };
 };
 
+exports.hgetallImpl = function(conn) {
+  return function(key) {
+    return function(onError, onSuccess) {
+      conn.hgetallBuffer(key, function(err, value) {
+        if (err !== null) {
+          onError(err);
+          return;
+        }
+        onSuccess(value);
+      });
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelError();
+      };
+    };
+  };
+};
+
 exports.hgetImpl = function(conn) {
   return function(key) {
-    return function(member) {
+    return function(field) {
       return function(onError, onSuccess) {
-        conn.hgetBuffer(key, member, function(err, value) {
+        conn.hgetBuffer(key, field, function(err, value) {
           if (err !== null) {
             onError(err);
             return;

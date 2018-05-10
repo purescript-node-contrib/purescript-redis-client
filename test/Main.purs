@@ -9,14 +9,13 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Except (catchError, throwError)
-import Data.Array (filter, sort, take)
+import Data.Array (filter, sort, sortWith, take)
 import Data.ByteString (ByteString)
 import Data.ByteString as ByteString
 import Data.Foldable (length)
 import Data.Maybe (Maybe(..))
 import Database.Redis (Connection, Expire(..), REDIS, Write(..), flushdb, keys)
 import Database.Redis as Redis
-import Debug.Trace (traceAnyA)
 import Test.Unit (TestSuite, suite)
 import Test.Unit as Test.Unit
 import Test.Unit.Assert as Assert
@@ -238,6 +237,16 @@ main = runTest $ do
         Assert.equal (Just value1.value) v1
         Assert.equal (Just value2.value) v2
 
+      test addr "hgetall" $ \conn -> do
+        void $ Redis.hset conn testHash value1.key value1.value
+        void $ Redis.hset conn testHash value2.key value2.value
+
+        values <- Redis.hgetall conn testHash
+
+        Assert.equal
+          [value1.value, value2.value]
+          (map _.value <<< sortWith _.key $ values)
+
     suite "list" do
       let
         testList = b "testList"
@@ -257,7 +266,7 @@ main = runTest $ do
         void $ Redis.lpush conn testList value3
         void $ Redis.lpush conn testList value2
         void $ Redis.lpush conn testList value1
-        a <- Redis.lrange conn testList 0 1
-        Assert.equal [value1, value2] a
-        b <- Redis.lrange conn testList (-3) (-1)
-        Assert.equal [value1, value2, value3] b
+        g1 <- Redis.lrange conn testList 0 1
+        Assert.equal [value1, value2] g1
+        g2 <- Redis.lrange conn testList (-3) (-1)
+        Assert.equal [value1, value2, value3] g2
