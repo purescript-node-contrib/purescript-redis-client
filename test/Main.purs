@@ -190,6 +190,18 @@ main = runTest $ do
         Assert.equal (map _.member updated') (map _.member got)
         Assert.equal (map _.score updated') (map _.score got)
 
+      test addr "zcard" $ \conn -> do
+        let
+          members =
+            [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+        void $ Redis.zadd
+          conn
+          testSet
+          (Redis.ZaddAll Redis.Added)
+          members
+        count ← Redis.zcard conn testSet
+        Assert.equal count 3
+
       test addr "zincrby/zrank" $ \conn -> do
         let
           member1 = { member: b "m1", score: 1.5 }

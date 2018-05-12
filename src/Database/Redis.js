@@ -288,7 +288,6 @@ exports.setImpl = function(conn) {
   };
 };
 
-
 exports.zaddImpl = function(conn) {
   return function(key) {
     return function(writeMode) {
@@ -320,6 +319,24 @@ exports.zaddImpl = function(conn) {
             };
           };
         };
+      };
+    };
+  };
+};
+
+exports.zcardImpl = function(conn) {
+  return function(key) {
+    return function(onError, onSuccess) {
+      var handler = function(err, val) {
+        if (err !== null) {
+          onError(err);
+          return;
+        }
+        onSuccess(parseInt(val));
+      };
+      conn.zcardBuffer.apply(conn, [key, handler]);
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelError();
       };
     };
   };

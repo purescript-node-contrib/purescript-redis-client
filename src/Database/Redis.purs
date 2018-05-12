@@ -23,6 +23,7 @@ module Database.Redis
   , set
   , withConnection
   , zadd
+  , zcard
   , zrank
   , zincrby
   , zrange
@@ -159,6 +160,11 @@ foreign import zaddImpl
   -> Nullable ByteString
   -> Array SortedSetItem
   -> EffFnAff (redis :: REDIS | eff) Int
+foreign import zcardImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) Int
 foreign import zrangeImpl
   :: ∀ eff
    . Connection
@@ -243,6 +249,12 @@ zadd conn key mode = fromEffFnAff <<< zaddImpl conn key write' return'
     ZaddAll Added -> Tuple (toNullable Nothing) (toNullable $ Nothing)
     ZaddRestrict XX -> Tuple (toNullable $ Just (serWrite XX)) (toNullable $ Just (toUTF8 "CH"))
     ZaddRestrict NX -> Tuple (toNullable $ Just (serWrite NX)) (toNullable Nothing)
+zcard
+  :: forall t81
+   . Connection
+  -> ByteString
+  -> Aff ( redis :: REDIS | t81) Int
+zcard conn = fromEffFnAff <<< zcardImpl conn
 zrange
   :: forall t10
    . Connection
