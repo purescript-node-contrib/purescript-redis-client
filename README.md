@@ -1,11 +1,11 @@
-# purescript-redis
+# purescript-redis-client
 
 Redis client library for PureScript. This library depends on the npm library
 ioredis. To use this library, you must manually install ioredis.
 
 ## Patched ioredis behavior
 
-For compatibility reasons with redis protocol this library mutates globaly response type of internal ioredis javascript `hgetall` method to:
+For compatibility reasons with raw redis protocol this library mutates globaly response type of javascript `hgetall` method to:
 
 ``` purescript
 Array { key ∷ ByteString, value ∷ ByteString }
@@ -28,3 +28,7 @@ and running tests with db cleanup can be done with:
 ```shell
 echo flushdb | redis-cli -p 43210 | pulp test
 ```
+
+## Credits
+
+This library started as a fork of `purescript-redis` which is not maintained any more.

@@ -1,9 +1,9 @@
 {
-  "name": "purescript-redis",
+  "name": "purescript-redis-client",
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paluh/purescript-redis.git"
+    "url": "https://github.com/paluh/purescript-redis-client.git"
   },
   "dependencies": {
     "purescript-aff": "^4.0.0",
