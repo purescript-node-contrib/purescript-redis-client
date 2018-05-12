@@ -31,4 +31,4 @@ echo flushdb | redis-cli -p 43210 | pulp test
 
 ## Credits
 
-This library started as a fork of `purescript-redis` which is not maintained any more.
+This library started as a fork of [`TinkerTravel/purescript-redis`](https://github.com/TinkerTravel/purescript-redis) which is not maintained any more.
