@@ -3,7 +3,7 @@
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TinkerTravel/purescript-redis.git"
+    "url": "https://github.com/paluh/purescript-redis.git"
   },
   "dependencies": {
     "purescript-aff": "^4.0.0",
