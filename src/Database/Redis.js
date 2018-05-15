@@ -523,3 +523,20 @@ exports.zrevrangebyscoreImpl = function(conn) {
     };
   };
 };
+
+exports.zscoreImpl = function(conn) {
+  return function(key) {
+    return function(member) {
+      return function(onError, onSuccess) {
+        var handler = function(err, val) {
+          if (err !== null) {
+            onError(err);
+            return;
+          }
+          onSuccess(parseFloat(val));
+        };
+        conn.zscoreBuffer.apply(conn, [key, member, handler]);
+      };
+    };
+  };
+};

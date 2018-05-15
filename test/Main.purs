@@ -117,7 +117,7 @@ main = runTest $ do
 
     suite "sorted set" do
       let testSet = b "testSet"
-      test addr "zadd" $ \conn -> do
+      test addr "zadd/zscore" $ \conn -> do
         let
           members =
             [ { member: b "m1", score: 1 }
@@ -133,6 +133,11 @@ main = runTest $ do
         got <- Redis.zrange conn testSet 0 1
         Assert.equal (map _.member <<< take 2 $ members) (map _.member got)
         Assert.equal (map (fromInt <<< _.score) <<< take 2 $ members) (map _.score got)
+
+        -- s1 ← Redis.zscore conn testSet (b "m1")
+        -- Assert.equal (Just $ fromInt 1) s1
+        -- s2 ← Redis.zscore conn testSet (b "m2")
+        -- Assert.equal (Just $ fromInt 2) s2
 
       test addr "zadd XX" $ \conn -> do
         let
@@ -341,7 +346,7 @@ main = runTest $ do
       test addr "zremrangebyscore" $ \conn -> do
         let
           members =
-            [ {member: b "one", score: 1 }
+            [ { member: b "one", score: 1 }
             , { member: b "two", score: 2 }
             , { member: b "three", score: 3 }
             , { member: b "four", score: 4 }
