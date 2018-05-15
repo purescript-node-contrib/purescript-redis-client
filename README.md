@@ -5,9 +5,9 @@ ioredis. To use this library, you must manually install ioredis.
 
 ## API notes
 
-### Sorted sets scores
+### Sorted sets `score` values
 
-In case of sorted set methods which operates on `score` (like `zrange`) we are using `Int53` values in general. However function which takes `score` values as inputs allow you to pass values of type which have `Int53Value` instance, so you can for example pass just `Int` to them.
+In case of sorted set methods which operate on `score` value (like `zrange`, `zadd` etc.) we are using `Int53` type to represent `score` values. However all functions which take `score` as an input accept values of all types which implement `Int53Value` instance. In other words you can pass just `Int` score values to them.
 
 ### Patched ioredis behavior
 
