@@ -9,12 +9,13 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Except (catchError, throwError)
-import Data.Array (filter, sort, sortWith, take)
+import Data.Array (drop, filter, sort, sortWith, take)
 import Data.ByteString (ByteString)
 import Data.ByteString as ByteString
 import Data.Foldable (length)
+import Data.Int53 (fromInt)
 import Data.Maybe (Maybe(..))
-import Database.Redis (Connection, Expire(..), REDIS, Write(..), flushdb, keys)
+import Database.Redis (Connection, Expire(..), negInf, posInf, ZscoreInterval(..), REDIS, Write(..), flushdb, keys)
 import Database.Redis as Redis
 import Test.Unit (TestSuite, suite)
 import Test.Unit as Test.Unit
@@ -119,7 +120,10 @@ main = runTest $ do
       test addr "zadd" $ \conn -> do
         let
           members =
-            [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+            [ { member: b "m1", score: 1 }
+            , { member: b "m2", score: 2 }
+            , { member: b "m3", score: 3 }
+            ]
         count <- Redis.zadd
           conn
           testSet
@@ -128,12 +132,12 @@ main = runTest $ do
         Assert.equal count 3
         got <- Redis.zrange conn testSet 0 1
         Assert.equal (map _.member <<< take 2 $ members) (map _.member got)
-        Assert.equal (map _.score <<< take 2 $ members) (map _.score got)
+        Assert.equal (map (fromInt <<< _.score) <<< take 2 $ members) (map _.score got)
 
       test addr "zadd XX" $ \conn -> do
         let
           members =
-            [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+            [{member: b "m1", score: 1 }, { member: b "m2", score: 2 } , { member: b "m3", score: 3 }]
         void $ Redis.zadd
           conn
           testSet
@@ -142,10 +146,10 @@ main = runTest $ do
 
         let
           updated =
-            [ { member: b "m1", score: 1.2}
-            , { member: b "m2", score: 2.2}
-            , { member: b "m3", score: 3.1}
-            , { member: b "new", score: 3.2 }
+            [ { member: b "m1", score: 1 }
+            , { member: b "m2", score: 3 }
+            , { member: b "m3", score: 4 }
+            , { member: b "new", score: 5 }
             ]
         count <- Redis.zadd
           conn
@@ -158,12 +162,15 @@ main = runTest $ do
         -- | We should only modify existing items and not add new ones
         let updated' = filter ((_ /= b "new") <<< _.member ) updated
         Assert.equal (map _.member updated') (map _.member got)
-        Assert.equal (map _.score updated') (map _.score got)
+        Assert.equal (map (fromInt <<< _.score) updated') (map _.score got)
 
       test addr "zadd NX" $ \conn -> do
         let
           members =
-            [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+            [ { member: b "m1", score: 1 }
+            , { member: b "m2", score: 2 }
+            , { member: b "m3", score: 3 }
+            ]
         void $ Redis.zadd
           conn
           testSet
@@ -172,10 +179,10 @@ main = runTest $ do
 
         let
           updated =
-            [ { member: b "m1", score: 1.2}
-            , { member: b "m2", score: 2.2}
-            , { member: b "m3", score: 3.1}
-            , { member: b "new", score: 3.2 }
+            [ { member: b "m1", score: 1 }
+            , { member: b "m2", score: 8 }
+            , { member: b "m3", score: 9 }
+            , { member: b "new", score: 4 }
             ]
         count <- Redis.zadd
           conn
@@ -186,14 +193,14 @@ main = runTest $ do
         Assert.equal 1 count
         got <- Redis.zrange conn testSet 0 100
         -- | We should only add new items and not modify existing ones
-        let updated' = members <> [{ member: b "new", score: 3.2 }]
+        let updated' = members <> [{ member: b "new", score: 4 }]
         Assert.equal (map _.member updated') (map _.member got)
-        Assert.equal (map _.score updated') (map _.score got)
+        Assert.equal (map (fromInt <<< _.score) updated') (map _.score got)
 
       test addr "zcard" $ \conn -> do
         let
           members =
-            [{member: b "m1", score: 1.5}, { member: b "m2", score: 2.2} , { member: b "m3", score: 3.0}]
+            [{member: b "m1", score: 1 }, { member: b "m2", score: 2 } , { member: b "m3", score: 3 }]
         void $ Redis.zadd
           conn
           testSet
@@ -204,8 +211,8 @@ main = runTest $ do
 
       test addr "zincrby/zrank" $ \conn -> do
         let
-          member1 = { member: b "m1", score: 1.5 }
-          member2 = { member: b "m2", score: 2.5 }
+          member1 = { member: b "m1", score: 1 }
+          member2 = { member: b "m2", score: 2 }
 
         m1Rank <- Redis.zrank conn testSet member1.member
         Assert.equal Nothing m1Rank
@@ -219,11 +226,111 @@ main = runTest $ do
         m1Rank' <- Redis.zrank conn testSet member1.member
         Assert.equal (Just 0) m1Rank'
 
-        got <- Redis.zincrby conn testSet 1.5 member1.member
-        Assert.equal 3.0 got
+        got <- Redis.zincrby conn testSet 2 member1.member
+        Assert.equal (fromInt 3) got
 
         m1Rank'' <- Redis.zrank conn testSet member1.member
         Assert.equal (Just 1) m1Rank''
+
+      test addr "zrem" $ \conn -> do
+        let
+          members =
+            [ { member: b "m1", score: 1 }
+            , { member: b "m2", score: 2 }
+            , { member: b "m3", score: 3 }
+            ]
+        void $ Redis.zadd
+          conn
+          testSet
+          (Redis.ZaddAll Redis.Added)
+          members
+
+        count <- Redis.zrem
+          conn
+          testSet
+          (take 2 <<< map _.member $ members)
+
+        Assert.equal 2 count
+        got <- Redis.zrange conn testSet 0 (-1)
+        Assert.equal (map _.member <<< drop 2 $ members) (map _.member got)
+
+      test addr "zremrangebylex" $ \conn -> do
+        let
+          members =
+            [ {member: b "aaaa", score: 0 }
+            , { member: b "b", score: 0 }
+            , { member: b "c", score: 0 }
+            , { member: b "d", score: 0 }
+            , { member: b "e", score: 0 }
+            , { member: b "foo", score: 0 }
+            , { member: b "zap", score: 0 }
+            , { member: b "zip", score: 0 }
+            , { member: b "ALPHA", score: 0 }
+            , { member: b "alpha", score: 0 }
+            ]
+        void $ Redis.zadd
+          conn
+          testSet
+          (Redis.ZaddAll Redis.Added)
+          members
+
+        count <- Redis.zremrangebylex
+          conn
+          testSet
+          (b "[alpha")
+          (b "[omega")
+
+        Assert.equal 6 count
+        got <- Redis.zrange conn testSet 0 (-1)
+        Assert.equal ([b "ALPHA", b "aaaa", b "zap", b "zip"]) (map _.member got)
+
+      test addr "zremrangebyrank" $ \conn -> do
+        let
+          members =
+            [ { member: b "one", score: 1 }
+            , { member: b "two", score: 2 }
+            , { member: b "three", score: 3 }
+            , { member: b "four", score: 4 }
+            , { member: b "five", score: 5 }
+            ]
+        void $ Redis.zadd
+          conn
+          testSet
+          (Redis.ZaddAll Redis.Added)
+          members
+
+        count <- Redis.zremrangebyrank conn testSet 0 2
+
+        Assert.equal 3 count
+        got <- Redis.zrange conn testSet 0 (-1)
+        Assert.equal ([b "four", b "five"]) (map _.member got)
+
+      test addr "zremrangebyscore" $ \conn -> do
+        let
+          members =
+            [ {member: b "one", score: 1 }
+            , { member: b "two", score: 2 }
+            , { member: b "three", score: 3 }
+            , { member: b "four", score: 4 }
+            , { member: b "five", score: 5 }
+            ]
+        void $ Redis.zadd
+          conn
+          testSet
+          (Redis.ZaddAll Redis.Added)
+          members
+
+        count <- Redis.zremrangebyscore conn testSet (Incl 0) (Excl 3)
+        Assert.equal 2 count
+
+        got <- Redis.zrange conn testSet 0 (-1)
+        Assert.equal ([b "three", b "four", b "five"]) (map _.member got)
+
+        count <- Redis.zremrangebyscore conn testSet negInf posInf
+        Assert.equal 3 count
+
+        got' <- Redis.zrange conn testSet 0 (-1)
+        Assert.equal ([]) (map _.member got')
 
     suite "hash" do
       let

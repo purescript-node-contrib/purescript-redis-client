@@ -2,9 +2,12 @@ module Database.Redis
   ( REDIS
   , Connection
   , Expire(..)
+  , negInf
+  , posInf
   , Write(..)
   , Zadd(..)
   , ZaddReturn(..)
+  , ZscoreInterval(..)
 
   , connect
   , del
@@ -27,6 +30,10 @@ module Database.Redis
   , zrank
   , zincrby
   , zrange
+  , zrem
+  , zremrangebylex
+  , zremrangebyrank
+  , zremrangebyscore
   ) where
 
 import Prelude
@@ -35,6 +42,7 @@ import Control.Monad.Aff (Aff, bracket)
 import Control.Monad.Aff.Compat (EffFnAff, fromEffFnAff)
 import Control.Monad.Eff (kind Effect)
 import Data.ByteString (ByteString, toUTF8)
+import Data.Int53 (class Int53Value, Int53, toInt53, toString)
 import Data.Maybe (Maybe(..))
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
@@ -71,9 +79,19 @@ serWrite :: Write -> ByteString
 serWrite NX = toUTF8 "NX"
 serWrite XX = toUTF8 "XX"
 
-type SortedSetItem = { member :: ByteString, score :: Number }
+type SortedSetItem i = { member :: ByteString, score :: i }
 data ZaddReturn = Changed | Added
 data Zadd = ZaddAll ZaddReturn | ZaddRestrict Write
+data ZscoreInterval i = Excl i | Incl i | NegInf | PosInf
+
+serZscoreInterval ∷ ∀ i. Int53Value i => ZscoreInterval i → ByteString
+serZscoreInterval NegInf = toUTF8 "-inf"
+serZscoreInterval PosInf = toUTF8 "+inf"
+serZscoreInterval (Excl i) = toUTF8 <<< ("(" <> _) <<< toString <<< toInt53 $ i
+serZscoreInterval (Incl i) = toUTF8 <<< toString <<< toInt53 $ i
+-- | Use this to avoid type signatures
+negInf = NegInf :: ZscoreInterval Int
+posInf = PosInf :: ZscoreInterval Int
 
 foreign import delImpl
   :: ∀ eff
@@ -158,7 +176,7 @@ foreign import zaddImpl
   -> ByteString
   -> Nullable ByteString
   -> Nullable ByteString
-  -> Array SortedSetItem
+  -> Array (SortedSetItem Int53)
   -> EffFnAff (redis :: REDIS | eff) Int
 foreign import zcardImpl
   :: ∀ eff
@@ -171,20 +189,47 @@ foreign import zrangeImpl
   -> ByteString
   -> Int
   -> Int
-  -> EffFnAff (redis :: REDIS | eff) (Array SortedSetItem)
+  -> EffFnAff (redis :: REDIS | eff) (Array (SortedSetItem Int53))
 foreign import zincrbyImpl
   :: ∀ eff
    . Connection
   -> ByteString
-  -> Number
+  -> Int53
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Number
+  -> EffFnAff (redis :: REDIS | eff) Int53
 foreign import zrankImpl
   :: ∀ eff
    . Connection
   -> ByteString
   -> ByteString
   -> EffFnAff (redis :: REDIS | eff) (Nullable Int)
+foreign import zremImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Array ByteString
+  -> EffFnAff (redis :: REDIS | eff) Int
+foreign import zremrangebylexImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) Int
+foreign import zremrangebyrankImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> EffFnAff (redis :: REDIS | eff) Int
+foreign import zremrangebyscoreImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) Int
 
 del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
@@ -202,17 +247,17 @@ incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
 incr conn = fromEffFnAff <<< incrImpl conn
 keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
 keys conn = fromEffFnAff <<< keysImpl conn
-lpop :: forall t10 . Connection -> ByteString -> Aff (redis :: REDIS | t10) (Maybe ByteString)
+lpop :: ∀ eff . Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 lpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
-lpush :: forall t10 . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | t10) Int
+lpush :: ∀ eff . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
 lpush conn key = fromEffFnAff <<< lpushImpl conn key
-lrange :: forall t10 . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | t10) (Array ByteString)
+lrange :: ∀ eff . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | eff) (Array ByteString)
 lrange conn key start = fromEffFnAff <<< lrangeImpl conn key start
 mget :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
 mget conn = fromEffFnAff <<< mgetImpl conn
-rpop :: forall t10 . Connection -> ByteString -> Aff (redis :: REDIS | t10) (Maybe ByteString)
+rpop :: ∀ eff . Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 rpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
-rpush :: forall t10 . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | t10) Int
+rpush :: ∀ eff . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
 rpush conn key = fromEffFnAff <<< lpushImpl conn key
 set
   :: ∀ eff
@@ -236,13 +281,14 @@ set conn key value expire write = fromEffFnAff $ setImpl conn key value expire' 
 -- | ZADD key XX CH score member [score member]
 -- | ZADD key NX score member [score member]
 zadd
-  :: forall t81
-   . Connection
+  :: ∀ eff i
+   . Int53Value i
+  => Connection
   -> ByteString
   -> Zadd
-  -> Array SortedSetItem
-  -> Aff ( redis :: REDIS | t81) Int
-zadd conn key mode = fromEffFnAff <<< zaddImpl conn key write' return'
+  -> Array (SortedSetItem i)
+  -> Aff ( redis :: REDIS | eff) Int
+zadd conn key mode = fromEffFnAff <<< zaddImpl conn key write' return' <<< map (\r → r { score = toInt53 r.score })
   where
   Tuple write' return' = case mode of
     ZaddAll Changed -> Tuple (toNullable Nothing) (toNullable $ Just (toUTF8 "CH"))
@@ -250,31 +296,68 @@ zadd conn key mode = fromEffFnAff <<< zaddImpl conn key write' return'
     ZaddRestrict XX -> Tuple (toNullable $ Just (serWrite XX)) (toNullable $ Just (toUTF8 "CH"))
     ZaddRestrict NX -> Tuple (toNullable $ Just (serWrite NX)) (toNullable Nothing)
 zcard
-  :: forall t81
+  :: ∀ eff
    . Connection
   -> ByteString
-  -> Aff ( redis :: REDIS | t81) Int
+  -> Aff ( redis :: REDIS | eff) Int
 zcard conn = fromEffFnAff <<< zcardImpl conn
 zrange
-  :: forall t10
+  :: ∀ eff
    . Connection
   -> ByteString
   -> Int
   -> Int
-  -> Aff (redis :: REDIS | t10) (Array SortedSetItem)
+  -> Aff (redis :: REDIS | eff) (Array (SortedSetItem Int53))
 zrange conn key start = fromEffFnAff <<< zrangeImpl conn key start
 zincrby
-  :: forall t10
-   . Connection
+  :: ∀ eff i
+   . Int53Value i
+  => Connection
   -> ByteString
-  -> Number
+  -> i
   -> ByteString
-  -> Aff (redis :: REDIS | t10) Number
-zincrby conn key increment = fromEffFnAff <<< zincrbyImpl conn key increment
+  -> Aff (redis :: REDIS | eff) Int53
+zincrby conn key increment = fromEffFnAff <<< zincrbyImpl conn key (toInt53 increment)
 zrank
-  :: forall t10
+  :: ∀ eff
    . Connection
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | t10) (Maybe Int)
+  -> Aff (redis :: REDIS | eff) (Maybe Int)
 zrank conn key member = toMaybe <$> (fromEffFnAff $ zrankImpl conn key member)
+zrem
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Array ByteString
+  -> Aff (redis :: REDIS | eff) Int
+zrem conn key = fromEffFnAff <<< zremImpl conn key
+zremrangebylex
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) Int
+zremrangebylex conn key min = fromEffFnAff <<< zremrangebylexImpl conn key min
+zremrangebyrank
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> Aff (redis :: REDIS | eff) Int
+zremrangebyrank conn key min = fromEffFnAff <<< zremrangebyrankImpl conn key min
+zremrangebyscore
+  :: ∀ eff max min
+   . Int53Value min
+  => Int53Value max
+  => Connection
+  -> ByteString
+  -> (ZscoreInterval min)
+  -> (ZscoreInterval max)
+  -> Aff (redis :: REDIS | eff) Int
+zremrangebyscore conn key min max = fromEffFnAff $ zremrangebyscoreImpl conn key min' max'
+  where
+  min' = serZscoreInterval min
+  max' = serZscoreInterval max

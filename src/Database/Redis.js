@@ -327,14 +327,7 @@ exports.zaddImpl = function(conn) {
 exports.zcardImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
-      var handler = function(err, val) {
-        if (err !== null) {
-          onError(err);
-          return;
-        }
-        onSuccess(parseInt(val));
-      };
-      conn.zcardBuffer.apply(conn, [key, handler]);
+      conn.zcardBuffer.apply(conn, [key, exports._intHandler(onError, onSuccess, false)]);
       return function(cancelError, cancelerError, cancelerSuccess) {
         cancelError();
       };
@@ -397,24 +390,87 @@ exports.zincrbyImpl = function(conn) {
   };
 };
 
+exports._intHandler = function(onError, onSuccess, nullable) {
+  return function(err, val) {
+    if (err !== null) {
+      onError(err);
+      return;
+    }
+    if(nullable && val === null) {
+      onSuccess(null);
+    } else {
+      onSuccess(parseInt(val));
+    }
+    return;
+  };
+};
+
+
 exports.zrankImpl = function(conn) {
   return function(key) {
     return function(member) {
       return function(onError, onSuccess) {
-        var handler = function(err, val) {
-          if (err !== null) {
-            onError(err);
-            return;
-          }
-          if (val !== null) {
-            onSuccess(parseInt(val));
-            return;
-          }
-          onSuccess(null);
-        };
-        conn.zrankBuffer.apply(conn, [key, member, handler]);
+        conn.zrankBuffer.apply(conn, [key, member, exports._intHandler(onError, onSuccess, true)]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
+        };
+      };
+    };
+  };
+};
+
+exports.zremImpl = function(conn) {
+  return function(key) {
+    return function(members) {
+      return function(onError, onSuccess) {
+        conn.zremBuffer.apply(conn, [key, members, exports._intHandler(onError, onSuccess, false)]);
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
+
+exports.zremrangebylexImpl = function(conn) {
+  return function(key) {
+    return function(min) {
+      return function(max) {
+        return function(onError, onSuccess) {
+          conn.zremrangebylexBuffer.apply(conn, [key, min, max, exports._intHandler(onError, onSuccess, false)]);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
+      };
+    };
+  };
+};
+
+exports.zremrangebyrankImpl = function(conn) {
+  return function(key) {
+    return function(start) {
+      return function(stop) {
+        return function(onError, onSuccess) {
+          conn.zremrangebyrankBuffer.apply(conn, [key, start, stop, exports._intHandler(onError, onSuccess, false)]);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
+      };
+    };
+  };
+};
+
+exports.zremrangebyscoreImpl = function(conn) {
+  return function(key) {
+    return function(min) {
+      return function(max) {
+        return function(onError, onSuccess) {
+          conn.zremrangebyscoreBuffer.apply(conn, [key, min, max, exports._intHandler(onError, onSuccess, false)]);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
         };
       };
     };
