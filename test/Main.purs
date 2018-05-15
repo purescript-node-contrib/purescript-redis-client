@@ -326,8 +326,8 @@ main = runTest $ do
         got <- Redis.zrange conn testSet 0 (-1)
         Assert.equal ([b "three", b "four", b "five"]) (map _.member got)
 
-        count <- Redis.zremrangebyscore conn testSet negInf posInf
-        Assert.equal 3 count
+        count' <- Redis.zremrangebyscore conn testSet negInf posInf
+        Assert.equal 3 count'
 
         got' <- Redis.zrange conn testSet 0 (-1)
         Assert.equal ([]) (map _.member got')
