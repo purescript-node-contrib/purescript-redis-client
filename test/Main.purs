@@ -209,6 +209,30 @@ main = runTest $ do
         count ← Redis.zcard conn testSet
         Assert.equal count 3
 
+      test addr "zrangebyscore" $ \conn -> do
+        let
+          members =
+            [ { member: b "one", score: 1 }
+            , { member: b "two", score: 2 }
+            , { member: b "three", score: 3 }
+            , { member: b "four", score: 4 }
+            , { member: b "five", score: 5 }
+            ]
+        void $ Redis.zadd
+          conn
+          testSet
+          (Redis.ZaddAll Redis.Added)
+          members
+
+        got <- Redis.zrangebyscore conn testSet (Incl 0) (Excl 3) Nothing
+        Assert.equal [b "one", b "two"] (map _.member got)
+
+        got' <- Redis.zrangebyscore conn testSet negInf posInf Nothing
+        Assert.equal [b "one", b "two", b "three", b "four", b "five"] (map _.member got')
+
+        got'' <- Redis.zrangebyscore conn testSet negInf posInf (Just { offset: 2, count: 2 })
+        Assert.equal [b "three", b "four"] (map _.member got'')
+
       test addr "zincrby/zrank" $ \conn -> do
         let
           member1 = { member: b "m1", score: 1 }

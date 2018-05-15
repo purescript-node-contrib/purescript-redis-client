@@ -335,39 +335,6 @@ exports.zcardImpl = function(conn) {
   };
 };
 
-exports.zrangeImpl = function(conn) {
-  return function(key) {
-    return function(start) {
-      return function(stop) {
-        return function(onError, onSuccess) {
-          var handler = function(err, val) {
-            var curr = {}, result = [];
-            if (err !== null) {
-              onError(err);
-              return;
-            }
-            val.forEach(function(i) {
-              if(curr.member === undefined) {
-                curr.member = i;
-              } else {
-                // XXX: I'm not sure if this is safe parsing
-                curr.score = parseFloat(i);
-                result.push(curr);
-                curr = {};
-              }
-            });
-            onSuccess(result);
-          };
-          conn.zrangeBuffer.apply(conn, [key, start, stop, 'WITHSCORES', handler]);
-          return function(cancelError, cancelerError, cancelerSuccess) {
-            cancelError();
-          };
-        };
-      };
-    };
-  };
-};
-
 exports.zincrbyImpl = function(conn) {
   return function(key) {
     return function(increment) {
@@ -405,6 +372,64 @@ exports._intHandler = function(onError, onSuccess, nullable) {
   };
 };
 
+exports._sortedSetItemsHanlder = function(onError, onSuccess) {
+  return function(err, val) {
+    var curr = {}, result = [];
+    if (err !== null) {
+      onError(err);
+      return;
+    }
+    val.forEach(function(i) {
+      if(curr.member === undefined) {
+        curr.member = i;
+      } else {
+        // XXX: I'm not sure if this is safe parsing
+        curr.score = parseFloat(i);
+        result.push(curr);
+        curr = {};
+      }
+    });
+    onSuccess(result);
+  };
+};
+
+exports.zrangeImpl = function(conn) {
+  return function(key) {
+    return function(start) {
+      return function(stop) {
+        return function(onError, onSuccess) {
+          var handler = exports._sortedSetItemsHanlder(onError, onSuccess);
+          conn.zrangeBuffer.apply(conn, [key, start, stop, 'WITHSCORES', handler]);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
+      };
+    };
+  };
+};
+
+exports.zrangebyscoreImpl = function(conn) {
+  return function(key) {
+    return function(min) {
+      return function(max) {
+        return function(limit) {
+          return function(onError, onSuccess) {
+            var handler = exports._sortedSetItemsHanlder(onError, onSuccess),
+                args =[key, min, max, 'WITHSCORES'];
+            if(limit !== null) {
+              args.push('LIMIT');
+              args.push(limit.offset);
+              args.push(limit.count);
+            }
+            args.push(handler);
+            conn.zrangebyscoreBuffer.apply(conn, args);
+          };
+        };
+      };
+    };
+  };
+};
 
 exports.zrankImpl = function(conn) {
   return function(key) {
