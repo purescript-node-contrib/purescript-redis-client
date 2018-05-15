@@ -134,10 +134,10 @@ main = runTest $ do
         Assert.equal (map _.member <<< take 2 $ members) (map _.member got)
         Assert.equal (map (fromInt <<< _.score) <<< take 2 $ members) (map _.score got)
 
-        -- s1 ← Redis.zscore conn testSet (b "m1")
-        -- Assert.equal (Just $ fromInt 1) s1
-        -- s2 ← Redis.zscore conn testSet (b "m2")
-        -- Assert.equal (Just $ fromInt 2) s2
+        s1 ← Redis.zscore conn testSet (b "m1")
+        Assert.equal (Just $ fromInt 1) s1
+        s2 ← Redis.zscore conn testSet (b "m2")
+        Assert.equal (Just $ fromInt 2) s2
 
       test addr "zadd XX" $ \conn -> do
         let
