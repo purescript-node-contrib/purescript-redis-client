@@ -3,7 +3,13 @@
 Redis client library for PureScript. This library depends on the npm library
 ioredis. To use this library, you must manually install ioredis.
 
-## Patched ioredis behavior
+## API notes
+
+### Sorted sets scores
+
+In case of sorted set methods which operates on `score` (like `zrange`) we are using `Int53` values in general. However function which takes `score` values as inputs allow you to pass values of type which have `Int53Value` instance, so you can for example pass just `Int` to them.
+
+### Patched ioredis behavior
 
 For compatibility reasons with raw redis protocol this library mutates globaly response type of javascript `hgetall` method to:
 
