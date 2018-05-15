@@ -15,7 +15,7 @@ import Data.ByteString as ByteString
 import Data.Foldable (length)
 import Data.Int53 (fromInt)
 import Data.Maybe (Maybe(..))
-import Database.Redis (Connection, Expire(..), negInf, posInf, ZscoreInterval(..), REDIS, Write(..), flushdb, keys)
+import Database.Redis (Connection, Expire(..), REDIS, Write(..), ZscoreInterval(..), flushdb, keys, negInf, posInf)
 import Database.Redis as Redis
 import Test.Unit (TestSuite, suite)
 import Test.Unit as Test.Unit
@@ -209,7 +209,7 @@ main = runTest $ do
         count ← Redis.zcard conn testSet
         Assert.equal count 3
 
-      test addr "zrangebyscore" $ \conn -> do
+      test addr "zrangebyscore/zrevrangebyscore" $ \conn -> do
         let
           members =
             [ { member: b "one", score: 1 }
@@ -223,6 +223,15 @@ main = runTest $ do
           testSet
           (Redis.ZaddAll Redis.Added)
           members
+
+        -- Member with maximum score:
+        -- ZREVRANGEBYSCORE myset +inf -inf WITHSCORES LIMIT 0 1
+        -- ZRANGEBYSCORE myset -inf +inf WITHSCORES LIMIT 0 1
+        min <- Redis.zrangebyscore conn testSet (negInf) (posInf) (Just {offset: 0, count: 1})
+        Assert.equal [fromInt 1] (map _.score min)
+
+        max <- Redis.zrevrangebyscore conn testSet (posInf) (negInf) (Just {offset: 0, count: 1})
+        Assert.equal [fromInt 5] (map _.score max)
 
         got <- Redis.zrangebyscore conn testSet (Incl 0) (Excl 3) Nothing
         Assert.equal [b "one", b "two"] (map _.member got)

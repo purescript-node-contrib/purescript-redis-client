@@ -501,3 +501,25 @@ exports.zremrangebyscoreImpl = function(conn) {
     };
   };
 };
+
+exports.zrevrangebyscoreImpl = function(conn) {
+  return function(key) {
+    return function(min) {
+      return function(max) {
+        return function(limit) {
+          return function(onError, onSuccess) {
+            var handler = exports._sortedSetItemsHanlder(onError, onSuccess),
+                args =[key, min, max, 'WITHSCORES'];
+            if(limit !== null) {
+              args.push('LIMIT');
+              args.push(limit.offset);
+              args.push(limit.count);
+            }
+            args.push(handler);
+            conn.zrevrangebyscoreBuffer.apply(conn, args);
+          };
+        };
+      };
+    };
+  };
+};

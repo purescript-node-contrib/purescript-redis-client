@@ -35,6 +35,7 @@ module Database.Redis
   , zremrangebylex
   , zremrangebyrank
   , zremrangebyscore
+  , zrevrangebyscore
   ) where
 
 import Prelude
@@ -240,6 +241,14 @@ foreign import zremrangebyscoreImpl
   -> ByteString
   -> ByteString
   -> EffFnAff (redis :: REDIS | eff) Int
+foreign import zrevrangebyscoreImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> ByteString
+  -> Nullable Zlimit
+  -> EffFnAff (redis :: REDIS | eff) (Array (Zitem Int53))
 
 del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
@@ -386,3 +395,18 @@ zremrangebyscore conn key min max = fromEffFnAff $ zremrangebyscoreImpl conn key
   where
   min' = serZscoreInterval min
   max' = serZscoreInterval max
+zrevrangebyscore
+  :: ∀ eff max min
+   . Int53Value min
+  => Int53Value max
+  => Connection
+  -> ByteString
+  -> (ZscoreInterval min)
+  -> (ZscoreInterval max)
+  -> Maybe Zlimit
+  -> Aff (redis :: REDIS | eff) (Array (Zitem Int53))
+zrevrangebyscore conn key min max limit = fromEffFnAff $ zrevrangebyscoreImpl conn key min' max' limit'
+  where
+  min' = serZscoreInterval min
+  max' = serZscoreInterval max
+  limit' = toNullable limit
