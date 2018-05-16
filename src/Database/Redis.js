@@ -11,6 +11,49 @@ ioredis.Command.setReplyTransformer('hgetall', function (result) {
   return arr;
 });
 
+exports._handleBlockingPopResult = function(onError, onSuccess) {
+  return function(err, val) {
+    if (err !== null) {
+      onError(err);
+      return;
+    }
+    if(val !== null) {
+      var key = val[0], value = val[1];
+      onSuccess({key: key, value: value});
+      return;
+    }
+    onSuccess(null);
+  };
+};
+
+exports.blpopImpl = function(conn) {
+  return function(keys) {
+    return function(timeout) {
+      return function(onError, onSuccess) {
+        var handler = exports._handleBlockingPopResult(onError, onSuccess);
+        conn.blpopBuffer.apply(conn, [keys, timeout, handler]);
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
+
+exports.brpopImpl = function(conn) {
+  return function(keys) {
+    return function(timeout) {
+      return function(onError, onSuccess) {
+        var handler = exports._handleBlockingPopResult(onError, onSuccess);
+        conn.brpopBuffer.apply(conn, [keys, timeout, handler]);
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
+
 exports.connectImpl = function(connstr) {
   return function(onError, onSuccess) {
     var redis = new ioredis(connstr);
@@ -178,16 +221,7 @@ exports.keysImpl = function(conn) {
 exports.lpopImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
-      var handler = function(err, val) {
-        if (err !== null) {
-          onError(err);
-          return;
-        }
-        if (val !== null) {
-          onSuccess(val);
-          return;
-        }
-      };
+      var handler = exports._plainValueHandler(onError, onSuccess);
       conn.lpopBuffer.apply(conn, [key, handler]);
       return function(cancelError, cancelerError, cancelerSuccess) {
         cancelError();
@@ -200,14 +234,34 @@ exports.lpushImpl = function(conn) {
   return function(key) {
     return function(value) {
       return function(onError, onSuccess) {
-        var handler = function(err, val) {
-          if (err !== null) {
-            onError(err);
-            return;
-          }
-          onSuccess(parseInt(val));
-        };
+        var handler = exports._intHandler(onError, onSuccess, false);
         conn.lpushBuffer.apply(conn, [key, value, handler]);
+        return function(cancelError, cancelerError, cancelerSuccess) {
+          cancelError();
+        };
+      };
+    };
+  };
+};
+
+exports.rpopImpl = function(conn) {
+  return function(key) {
+    return function(onError, onSuccess) {
+      var handler = exports._plainValueHandler(onError, onSuccess);
+      conn.rpopBuffer.apply(conn, [key, handler]);
+      return function(cancelError, cancelerError, cancelerSuccess) {
+        cancelError();
+      };
+    };
+  };
+};
+
+exports.rpushImpl = function(conn) {
+  return function(key) {
+    return function(value) {
+      return function(onError, onSuccess) {
+        var handler = exports._intHandler(onError, onSuccess, false);
+        conn.rpushBuffer.apply(conn, [key, value, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
         };
@@ -221,14 +275,44 @@ exports.lrangeImpl = function(conn) {
     return function(start) {
       return function(end) {
         return function(onError, onSuccess) {
-          var handler = function(err, val) {
-            if (err !== null) {
-              onError(err);
-              return;
-            }
-            onSuccess(val);
-          };
+          var handler = exports._plainValueHandler(onError, onSuccess);
           conn.lrangeBuffer.apply(conn, [key, start, end, handler]);
+          return function(cancelError, cancelerError, cancelerSuccess) {
+            cancelError();
+          };
+        };
+      };
+    };
+  };
+};
+
+exports._plainValueHandler = function(onError, onSuccess) {
+  return function(err, val) {
+    if (err !== null) {
+      onError(err);
+      return;
+    }
+    onSuccess(val);
+  };
+};
+
+exports._nullValueHandler = function(onError, onSuccess) {
+  return function(err, val) {
+    if (err !== null) {
+      onError(err);
+      return;
+    }
+    onSuccess(null);
+  };
+};
+
+exports.ltrimImpl = function(conn) {
+  return function(key) {
+    return function(start) {
+      return function(end) {
+        return function(onError, onSuccess) {
+          var handler = exports._nullValueHandler(onError, onSuccess);
+          conn.ltrimBuffer.apply(conn, [key, start, end, handler]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
           };

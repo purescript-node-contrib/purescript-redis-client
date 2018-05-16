@@ -15,6 +15,7 @@ import Data.ByteString as ByteString
 import Data.Foldable (length)
 import Data.Int53 (fromInt)
 import Data.Maybe (Maybe(..))
+import Data.NonEmpty (singleton)
 import Database.Redis (Connection, Expire(..), REDIS, Write(..), ZscoreInterval(..), flushdb, keys, negInf, posInf)
 import Database.Redis as Redis
 import Test.Unit (TestSuite, suite)
@@ -411,13 +412,19 @@ main = runTest $ do
         value2 = b "val2"
         value3 = b "val3"
 
+      test addr "lpush / blpop" $ \conn -> do
+        v <- Redis.blpop conn (singleton testList) 1
+        Assert.equal Nothing (v <#> _.value)
+
       test addr "lpush / lpop" $ \conn -> do
         void $ Redis.lpush conn testList value1
         void $ Redis.lpush conn testList value2
         v2 <- Redis.lpop conn testList
         v1 <- Redis.lpop conn testList
+        n <- Redis.lpop conn testList
         Assert.equal (Just value2) v2
         Assert.equal (Just value1) v1
+        Assert.equal Nothing n
 
       test addr "lrange" $ \conn -> do
         void $ Redis.lpush conn testList value3
@@ -427,3 +434,37 @@ main = runTest $ do
         Assert.equal [value1, value2] g1
         g2 <- Redis.lrange conn testList (-3) (-1)
         Assert.equal [value1, value2, value3] g2
+
+      test addr "ltrim" $ \conn -> do
+        void $ Redis.lpush conn testList value3
+        void $ Redis.lpush conn testList value2
+        void $ Redis.lpush conn testList value1
+
+        Redis.ltrim conn testList 0 1
+        got <- Redis.lrange conn testList 0 3
+        Assert.equal [value1, value2] got
+
+        Redis.ltrim conn testList 1 0
+        got' <- Redis.lrange conn testList 0 3
+        Assert.equal [] got'
+
+      test addr "rpush / rpop" $ \conn -> do
+        void $ Redis.rpush conn testList value1
+        void $ Redis.rpush conn testList value2
+        v2 <- Redis.rpop conn testList
+        v1 <- Redis.rpop conn testList
+        n <- Redis.rpop conn testList
+        Assert.equal (Just value2) v2
+        Assert.equal (Just value1) v1
+        Assert.equal Nothing n
+
+
+      test addr "rpush / brpop" $ \conn -> do
+        void $ Redis.rpush conn testList value1
+        void $ Redis.rpush conn testList value2
+        v2 <- Redis.brpop conn (singleton testList) 1
+        v1 <- Redis.brpop conn (singleton testList) 1
+        n <- Redis.brpop conn (singleton testList) 1
+        Assert.equal (Just value2) (v2 <#> _.value)
+        Assert.equal (Just value1) (v1 <#> _.value)
+        Assert.equal Nothing (n <#> _.value)

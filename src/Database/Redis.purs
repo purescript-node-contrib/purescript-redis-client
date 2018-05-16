@@ -9,6 +9,8 @@ module Database.Redis
   , ZaddReturn(..)
   , ZscoreInterval(..)
 
+  , blpop
+  , brpop
   , connect
   , del
   , disconnect
@@ -22,7 +24,10 @@ module Database.Redis
   , lpop
   , lpush
   , lrange
+  , ltrim
   , mget
+  , rpop
+  , rpush
   , set
   , withConnection
   , zadd
@@ -44,17 +49,22 @@ import Prelude
 import Control.Monad.Aff (Aff, bracket)
 import Control.Monad.Aff.Compat (EffFnAff, fromEffFnAff)
 import Control.Monad.Eff (kind Effect)
+import Data.Array (fromFoldable)
 import Data.ByteString (ByteString, toUTF8)
 import Data.Int53 (class Int53Value, Int53, toInt53, toString)
 import Data.Maybe (Maybe(..))
+import Data.NonEmpty (NonEmpty(..))
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 --------------------------------------------------------------------------------
 
 foreign import data REDIS :: Effect
 
 foreign import data Connection :: Type
+
+foreign import data Null :: Type
 
 --------------------------------------------------------------------------------
 
@@ -97,6 +107,22 @@ serZscoreInterval (Incl i) = toUTF8 <<< toString <<< toInt53 $ i
 negInf = NegInf :: ZscoreInterval Int
 posInf = PosInf :: ZscoreInterval Int
 
+foreign import blpopImpl
+  :: ∀ eff
+   . Connection
+  -> Array ByteString
+  -> Int
+  -> EffFnAff
+      (redis :: REDIS | eff)
+      (Nullable { key ∷ ByteString, value ∷ ByteString })
+foreign import brpopImpl
+  :: ∀ eff
+   . Connection
+  -> Array ByteString
+  -> Int
+  -> EffFnAff
+      (redis :: REDIS | eff)
+      (Nullable { key ∷ ByteString, value ∷ ByteString })
 foreign import delImpl
   :: ∀ eff
    . Connection
@@ -159,6 +185,24 @@ foreign import lrangeImpl
   -> Int
   -> Int
   -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+foreign import ltrimImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> EffFnAff (redis :: REDIS | eff) Null
+foreign import rpopImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) (Nullable ByteString)
+foreign import rpushImpl
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> EffFnAff (redis :: REDIS | eff) Int
 foreign import mgetImpl
   :: ∀ eff
    . Connection
@@ -257,6 +301,10 @@ foreign import zscoreImpl
   -> ByteString
   -> EffFnAff (redis :: REDIS | eff) (Nullable Int53)
 
+blpop :: ∀ eff. Connection -> NonEmpty Array ByteString -> Int -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
+blpop conn keys timeout = toMaybe <$> (fromEffFnAff $ blpopImpl conn (fromFoldable keys) timeout)
+brpop :: ∀ eff. Connection -> NonEmpty Array ByteString -> Int -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
+brpop conn keys timeout = toMaybe <$> (fromEffFnAff $ brpopImpl conn (fromFoldable keys) timeout)
 del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
 flushdb :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
@@ -279,12 +327,14 @@ lpush :: ∀ eff . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS
 lpush conn key = fromEffFnAff <<< lpushImpl conn key
 lrange :: ∀ eff . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | eff) (Array ByteString)
 lrange conn key start = fromEffFnAff <<< lrangeImpl conn key start
+ltrim :: ∀ eff . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | eff) Unit
+ltrim conn key start end = unit <$ (fromEffFnAff $ ltrimImpl conn key start end)
 mget :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
 mget conn = fromEffFnAff <<< mgetImpl conn
 rpop :: ∀ eff . Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-rpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
+rpop conn key = toMaybe <$> (fromEffFnAff $ rpopImpl conn key)
 rpush :: ∀ eff . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
-rpush conn key = fromEffFnAff <<< lpushImpl conn key
+rpush conn key = fromEffFnAff <<< rpushImpl conn key
 set
   :: ∀ eff
   . Connection
