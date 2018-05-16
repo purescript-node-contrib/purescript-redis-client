@@ -53,10 +53,9 @@ import Data.Array (fromFoldable)
 import Data.ByteString (ByteString, toUTF8)
 import Data.Int53 (class Int53Value, Int53, toInt53, toString)
 import Data.Maybe (Maybe(..))
-import Data.NonEmpty (NonEmpty(..))
+import Data.NonEmpty (NonEmpty)
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
-import Unsafe.Coerce (unsafeCoerce)
 
 --------------------------------------------------------------------------------
 
@@ -300,44 +299,121 @@ foreign import zscoreImpl
   -> ByteString
   -> ByteString
   -> EffFnAff (redis :: REDIS | eff) (Nullable Int53)
-
-blpop :: ∀ eff. Connection -> NonEmpty Array ByteString -> Int -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
+blpop
+  :: ∀ eff
+   . Connection
+  -> NonEmpty Array ByteString
+  -> Int
+  -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
 blpop conn keys timeout = toMaybe <$> (fromEffFnAff $ blpopImpl conn (fromFoldable keys) timeout)
-brpop :: ∀ eff. Connection -> NonEmpty Array ByteString -> Int -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
+brpop
+  :: ∀ eff
+   . Connection
+  -> NonEmpty Array ByteString
+  -> Int
+  -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
 brpop conn keys timeout = toMaybe <$> (fromEffFnAff $ brpopImpl conn (fromFoldable keys) timeout)
-del :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) Unit
+del
+  :: ∀ eff
+   . Connection
+  -> Array ByteString
+  -> Aff (redis :: REDIS | eff) Unit
 del conn = fromEffFnAff <<< delImpl conn
-flushdb :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
+flushdb
+  :: ∀ eff
+   . Connection
+  -> Aff (redis :: REDIS | eff) Unit
 flushdb = fromEffFnAff <<< flushdbImpl
-get :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+get
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 get conn = fromEffFnAff <<< getImpl conn
-hget :: ∀ eff. Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+hget
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 hget conn key field = toMaybe <$> (fromEffFnAff $ hgetImpl conn key field)
-hgetall :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array {key :: ByteString, value :: ByteString})
+hgetall
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) (Array {key :: ByteString, value :: ByteString})
 hgetall conn = fromEffFnAff <<< hgetallImpl conn
-hset :: ∀ eff. Connection -> ByteString -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
+hset
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) Int
 hset conn key field = fromEffFnAff <<< hsetImpl conn key field
-incr :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) Int
+incr
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) Int
 incr conn = fromEffFnAff <<< incrImpl conn
-keys :: ∀ eff. Connection -> ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
+keys
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) (Array ByteString)
 keys conn = fromEffFnAff <<< keysImpl conn
-lpop :: ∀ eff . Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+lpop
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 lpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
-lpush :: ∀ eff . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
+lpush
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) Int
 lpush conn key = fromEffFnAff <<< lpushImpl conn key
-lrange :: ∀ eff . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | eff) (Array ByteString)
+lrange
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> Aff (redis :: REDIS | eff) (Array ByteString)
 lrange conn key start = fromEffFnAff <<< lrangeImpl conn key start
-ltrim :: ∀ eff . Connection -> ByteString -> Int -> Int -> Aff (redis :: REDIS | eff) Unit
+ltrim
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Int
+  -> Int
+  -> Aff (redis :: REDIS | eff) Unit
 ltrim conn key start end = unit <$ (fromEffFnAff $ ltrimImpl conn key start end)
-mget :: ∀ eff. Connection -> Array ByteString -> Aff (redis :: REDIS | eff) (Array ByteString)
+mget
+  :: ∀ eff
+   . Connection
+  -> Array ByteString
+  -> Aff (redis :: REDIS | eff) (Array ByteString)
 mget conn = fromEffFnAff <<< mgetImpl conn
-rpop :: ∀ eff . Connection -> ByteString -> Aff (redis :: REDIS | eff) (Maybe ByteString)
+rpop
+  :: ∀ eff
+   . Connection
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
 rpop conn key = toMaybe <$> (fromEffFnAff $ rpopImpl conn key)
-rpush :: ∀ eff . Connection -> ByteString -> ByteString -> Aff (redis :: REDIS | eff) Int
+rpush
+  :: ∀ eff
+  . Connection
+  -> ByteString
+  -> ByteString
+  -> Aff (redis :: REDIS | eff) Int
 rpush conn key = fromEffFnAff <<< rpushImpl conn key
 set
   :: ∀ eff
-  . Connection
+   . Connection
   -> ByteString
   -> ByteString
   -> Maybe Expire
