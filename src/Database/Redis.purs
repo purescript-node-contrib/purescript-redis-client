@@ -10,7 +10,9 @@ module Database.Redis
   , ZscoreInterval(..)
 
   , blpop
+  , blpopIndef
   , brpop
+  , brpopIndef
   , connect
   , del
   , disconnect
@@ -56,6 +58,7 @@ import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty)
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 --------------------------------------------------------------------------------
 
@@ -306,6 +309,12 @@ blpop
   -> Int
   -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
 blpop conn keys timeout = toMaybe <$> (fromEffFnAff $ blpopImpl conn (fromFoldable keys) timeout)
+blpopIndef
+  :: ∀ eff
+   . Connection
+  -> NonEmpty Array ByteString
+  -> Aff (redis :: REDIS | eff) {key ∷ ByteString, value ∷ ByteString}
+blpopIndef conn keys = unsafeCoerce (fromEffFnAff $ blpopImpl conn (fromFoldable keys) 0)
 brpop
   :: ∀ eff
    . Connection
@@ -313,6 +322,12 @@ brpop
   -> Int
   -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
 brpop conn keys timeout = toMaybe <$> (fromEffFnAff $ brpopImpl conn (fromFoldable keys) timeout)
+brpopIndef
+  :: ∀ eff
+   . Connection
+  -> NonEmpty Array ByteString
+  -> Aff (redis :: REDIS | eff) {key ∷ ByteString, value ∷ ByteString}
+brpopIndef conn keys = unsafeCoerce (fromEffFnAff $ brpopImpl conn (fromFoldable keys) 0)
 del
   :: ∀ eff
    . Connection

@@ -4,7 +4,7 @@ module Test.Main
 
 import Prelude
 
-import Control.Monad.Aff (Aff, Milliseconds(Milliseconds), delay)
+import Control.Monad.Aff (Aff, Milliseconds(Milliseconds), delay, forkAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Console (CONSOLE)
@@ -16,7 +16,7 @@ import Data.Foldable (length)
 import Data.Int53 (fromInt)
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (singleton)
-import Database.Redis (Connection, Expire(..), REDIS, Write(..), ZscoreInterval(..), flushdb, keys, negInf, posInf)
+import Database.Redis (Connection, Expire(..), REDIS, Write(..), ZscoreInterval(..), flushdb, keys, negInf, posInf, withConnection)
 import Database.Redis as Redis
 import Test.Unit (TestSuite, suite)
 import Test.Unit as Test.Unit
@@ -458,7 +458,6 @@ main = runTest $ do
         Assert.equal (Just value1) v1
         Assert.equal Nothing n
 
-
       test addr "rpush / brpop" $ \conn -> do
         void $ Redis.rpush conn testList value1
         void $ Redis.rpush conn testList value2
@@ -468,3 +467,10 @@ main = runTest $ do
         Assert.equal (Just value2) (v2 <#> _.value)
         Assert.equal (Just value1) (v1 <#> _.value)
         Assert.equal Nothing (n <#> _.value)
+
+      test addr "rpush / brpopIndef" $ \conn -> do
+        void $ forkAff $ withConnection addr \conn2 -> do
+          delay (Milliseconds 1000.0)
+          void $ Redis.rpush conn2 testList value1
+        v <- Redis.brpopIndef conn (singleton testList)
+        Assert.equal v.value value1

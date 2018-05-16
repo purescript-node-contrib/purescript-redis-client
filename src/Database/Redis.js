@@ -45,6 +45,7 @@ exports.brpopImpl = function(conn) {
     return function(timeout) {
       return function(onError, onSuccess) {
         var handler = exports._handleBlockingPopResult(onError, onSuccess);
+        console.log(timeout);
         conn.brpopBuffer.apply(conn, [keys, timeout, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
