@@ -1,7 +1,10 @@
 module Database.Redis
   ( REDIS
   , Connection
+  , Config
+  , defaultConfig
   , Expire(..)
+  , IPFamily
   , negInf
   , posInf
   , Write(..)
@@ -66,22 +69,56 @@ foreign import data REDIS :: Effect
 
 foreign import data Connection :: Type
 
+data IPFamily = IPv4 | IPv6
+derive instance eqIPFamily ∷ Eq IPFamily
+
+type Config =
+  { db :: Maybe Int
+  , family :: IPFamily
+  , host :: String
+  , password :: Maybe String
+  , port :: Int
+  }
+
 foreign import data Null :: Type
 
---------------------------------------------------------------------------------
+defaultConfig ∷ Config
+defaultConfig =
+  { db: Nothing
+  , family: IPv4
+  , host: "127.0.0.1"
+  , password: Nothing
+  , port: 6379
+  }
 
 withConnection
   :: ∀ eff a
-   . String
+   . Config
   -> (Connection -> Aff (redis :: REDIS | eff) a)
   -> Aff (redis :: REDIS | eff) a
-withConnection s = bracket (connect s) disconnect
+withConnection c = bracket (connect c) disconnect
 
-foreign import connectImpl :: ∀ eff. String -> EffFnAff (redis :: REDIS | eff) Connection
+type Config' =
+  { db :: Nullable Int
+  , family :: Int
+  , host :: String
+  , password :: Nullable String
+  , port :: Int
+  }
+foreign import connectImpl :: ∀ eff. Config' -> EffFnAff (redis :: REDIS | eff) Connection
 foreign import disconnectImpl :: ∀ eff. Connection -> EffFnAff (redis :: REDIS | eff) Unit
 
-connect :: ∀ eff. String -> Aff (redis :: REDIS | eff) Connection
-connect = fromEffFnAff <<< connectImpl
+connect :: ∀ eff. Config -> Aff (redis :: REDIS | eff) Connection
+connect cfg = fromEffFnAff <<< connectImpl <<< ser $ cfg
+  where
+  ser c =
+    { db: toNullable c.db
+    , family: if c.family == IPv4 then 4 else 6
+    , host: c.host
+    , password: toNullable c.password
+    , port: c.port
+    }
+
 disconnect :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
 disconnect = fromEffFnAff <<< disconnectImpl
 

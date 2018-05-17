@@ -16,7 +16,7 @@ import Data.Foldable (length)
 import Data.Int53 (fromInt)
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (singleton)
-import Database.Redis (Connection, Expire(..), REDIS, Write(..), ZscoreInterval(..), flushdb, keys, negInf, posInf, withConnection)
+import Database.Redis (Connection, Expire(..), REDIS, Write(..), ZscoreInterval(..), Config, defaultConfig, flushdb, keys, negInf, posInf, withConnection)
 import Database.Redis as Redis
 import Test.Unit (TestSuite, suite)
 import Test.Unit as Test.Unit
@@ -29,7 +29,7 @@ b = ByteString.toUTF8
 
 test
   :: forall t39 t40
-   . String
+   . Config
   -> String
   -> (Connection -> Aff ( redis :: REDIS | t39) t40)
   -> TestSuite (redis :: REDIS | t39)
@@ -39,10 +39,10 @@ test s title action =
 
 withFlushdb
   :: ∀ a eff
-   . String
+   . Config
   -> (Connection -> Aff ( redis :: REDIS | eff) a)
   -> Aff ( redis :: REDIS | eff) Unit
-withFlushdb s action = Redis.withConnection s \conn -> do
+withFlushdb c action = Redis.withConnection c \conn -> do
   k <- keys conn (b "*")
   -- Safe guard
   Assert.assert  "Test database should be empty" (length k == 0)
@@ -60,7 +60,7 @@ main
     Unit
 main = runTest $ do
   let
-    addr = "redis://127.0.0.1:43210"
+    addr = defaultConfig { port=43210 }
     key1 = b "purescript-redis:test:key1"
     key2 = b "purescript-redis:test:key2"
 
