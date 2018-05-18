@@ -139,6 +139,8 @@ main = runTest $ do
         Assert.equal (Just $ fromInt 1) s1
         s2 ← Redis.zscore conn testSet (b "m2")
         Assert.equal (Just $ fromInt 2) s2
+        n ← Redis.zscore conn testSet (b "nonexisting")
+        Assert.equal Nothing n
 
       test addr "zadd XX" $ \conn -> do
         let

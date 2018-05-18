@@ -617,7 +617,11 @@ exports.zscoreImpl = function(conn) {
             onError(err);
             return;
           }
-          onSuccess(parseFloat(val));
+          if(val !== null) {
+            onSuccess(parseFloat(val));
+          } else {
+            onSuccess(val);
+          }
         };
         conn.zscoreBuffer.apply(conn, [key, member, handler]);
       };
