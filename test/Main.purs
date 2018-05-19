@@ -70,6 +70,8 @@ main = runTest $ do
       Redis.set conn key1 set Nothing Nothing
       got <- Redis.get conn key1
       Assert.equal (Just set) got
+      n <- Redis.get conn (b "nonexisting")
+      Assert.equal Nothing n
 
     test addr "incr on empty value" $ \conn -> do
       got <- Redis.incr conn key2

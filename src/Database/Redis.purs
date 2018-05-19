@@ -175,7 +175,7 @@ foreign import getImpl
   :: ∀ eff
    . Connection
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Maybe ByteString)
+  -> EffFnAff (redis :: REDIS | eff) (Nullable ByteString)
 foreign import hgetallImpl
   :: ∀ eff
    . Connection
@@ -381,7 +381,7 @@ get
    . Connection
   -> ByteString
   -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-get conn = fromEffFnAff <<< getImpl conn
+get conn key = toMaybe <$> (fromEffFnAff $ getImpl conn key)
 hget
   :: ∀ eff
    . Connection

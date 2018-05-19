@@ -1,6 +1,5 @@
 'use strict';
 
-var Data_Maybe = require('../Data.Maybe');
 var ioredis = require('ioredis');
 
 ioredis.Command.setReplyTransformer('hgetall', function (result) {
@@ -115,10 +114,7 @@ exports.getImpl = function(conn) {
           onError(err);
           return;
         }
-        var valueMaybe = value === null
-          ? Data_Maybe.Nothing.value
-          : new Data_Maybe.Just(value);
-        onSuccess(valueMaybe);
+        onSuccess(value);
       });
       return function(cancelError, cancelerError, cancelerSuccess) {
         cancelError();
