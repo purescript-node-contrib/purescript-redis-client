@@ -58,7 +58,7 @@ import Data.Array (fromFoldable)
 import Data.ByteString (ByteString, toUTF8)
 import Data.Int53 (class Int53Value, Int53, toInt53, toString)
 import Data.Maybe (Maybe(..))
-import Data.NonEmpty (NonEmpty)
+import Data.NonEmpty (NonEmpty(..))
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
 import Unsafe.Coerce (unsafeCoerce)
@@ -368,9 +368,9 @@ brpopIndef conn keys = unsafeCoerce (fromEffFnAff $ brpopImpl conn (fromFoldable
 del
   :: ∀ eff
    . Connection
-  -> Array ByteString
+  -> NonEmpty Array ByteString
   -> Aff (redis :: REDIS | eff) Unit
-del conn = fromEffFnAff <<< delImpl conn
+del conn = fromEffFnAff <<< delImpl conn <<< fromFoldable
 flushdb
   :: ∀ eff
    . Connection
@@ -447,9 +447,9 @@ ltrim conn key start end = unit <$ (fromEffFnAff $ ltrimImpl conn key start end)
 mget
   :: ∀ eff
    . Connection
-  -> Array ByteString
+  -> NonEmpty Array ByteString
   -> Aff (redis :: REDIS | eff) (Array ByteString)
-mget conn = fromEffFnAff <<< mgetImpl conn
+mget conn = fromEffFnAff <<< mgetImpl conn <<< fromFoldable
 rpop
   :: ∀ eff
    . Connection
@@ -490,9 +490,10 @@ zadd
   => Connection
   -> ByteString
   -> Zadd
-  -> Array (Zitem i)
+  -> NonEmpty Array (Zitem i)
   -> Aff ( redis :: REDIS | eff) Int
-zadd conn key mode = fromEffFnAff <<< zaddImpl conn key write' return' <<< map (\r → r { score = toInt53 r.score })
+zadd conn key mode =
+  fromEffFnAff <<< zaddImpl conn key write' return' <<< map (\r → r { score = toInt53 r.score }) <<< fromFoldable
   where
   Tuple write' return' = case mode of
     ZaddAll Changed -> Tuple (toNullable Nothing) (toNullable $ Just (toUTF8 "CH"))
@@ -548,9 +549,9 @@ zrem
   :: ∀ eff
    . Connection
   -> ByteString
-  -> Array ByteString
+  -> NonEmpty Array ByteString
   -> Aff (redis :: REDIS | eff) Int
-zrem conn key = fromEffFnAff <<< zremImpl conn key
+zrem conn key = fromEffFnAff <<< zremImpl conn key <<< fromFoldable
 zremrangebylex
   :: ∀ eff
    . Connection
