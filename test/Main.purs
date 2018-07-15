@@ -4,10 +4,8 @@ module Test.Main
 
 import Prelude
 
-import Control.Monad.Aff (Aff, Milliseconds(Milliseconds), delay, forkAff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.AVar (AVAR)
-import Control.Monad.Eff.Console (CONSOLE)
+import Effect.Aff (Aff, Milliseconds(Milliseconds), delay, forkAff)
+import Effect (Effect)
 import Control.Monad.Except (catchError, throwError)
 import Data.Array (drop, filter, fromFoldable, sort, sortWith, take)
 import Data.ByteString (ByteString)
@@ -16,48 +14,38 @@ import Data.Foldable (length)
 import Data.Int53 (fromInt)
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (singleton, (:|))
-import Database.Redis (Connection, Expire(..), REDIS, Write(..), ZscoreInterval(..), Config, defaultConfig, flushdb, keys, negInf, posInf, withConnection)
+import Database.Redis (Connection, Expire(..), Write(..), ZscoreInterval(..), Config, defaultConfig, flushdb, keys, negInf, posInf, withConnection)
 import Database.Redis as Redis
 import Test.Unit (TestSuite, suite)
 import Test.Unit as Test.Unit
 import Test.Unit.Assert as Assert
-import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
 
 b :: String -> ByteString
 b = ByteString.toUTF8
 
 test
-  :: forall t39 t40
+  :: forall a
    . Config
   -> String
-  -> (Connection -> Aff ( redis :: REDIS | t39) t40)
-  -> TestSuite (redis :: REDIS | t39)
+  -> (Connection -> Aff a)
+  -> TestSuite
 test s title action =
   Test.Unit.test title $ do
     withFlushdb s action
 
 withFlushdb
-  :: ∀ a eff
+  :: ∀ a
    . Config
-  -> (Connection -> Aff ( redis :: REDIS | eff) a)
-  -> Aff ( redis :: REDIS | eff) Unit
+  -> (Connection -> Aff a)
+  -> Aff Unit
 withFlushdb c action = Redis.withConnection c \conn -> do
   k <- keys conn (b "*")
   -- Safe guard
   Assert.assert  "Test database should be empty" (length k == 0)
   catchError (action conn >>= const (flushdb conn)) (\e -> flushdb conn >>= const (throwError e))
 
-main
-  :: forall eff
-  . Eff
-    ( console :: CONSOLE
-    , testOutput :: TESTOUTPUT
-    , avar :: AVAR
-    , redis :: REDIS
-    | eff
-    )
-    Unit
+main :: Effect Unit
 main = runTest $ do
   let
     addr = defaultConfig { port=43210 }
@@ -145,8 +133,8 @@ main = runTest $ do
         Assert.equal (Just $ fromInt 1) s1
         s2 ← Redis.zscore conn testSet (b "m2")
         Assert.equal (Just $ fromInt 2) s2
-        n ← Redis.zscore conn testSet (b "nonexisting")
-        Assert.equal Nothing n
+        n' ← Redis.zscore conn testSet (b "nonexisting")
+        Assert.equal Nothing n'
 
       test addr "zadd XX" $ \conn -> do
         let

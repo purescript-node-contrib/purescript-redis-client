@@ -1,6 +1,5 @@
 module Database.Redis
-  ( REDIS
-  , Connection
+  ( Connection
   , Config
   , defaultConfig
   , Expire(..)
@@ -51,21 +50,18 @@ module Database.Redis
 
 import Prelude
 
-import Control.Monad.Aff (Aff, bracket)
-import Control.Monad.Aff.Compat (EffFnAff, fromEffFnAff)
-import Control.Monad.Eff (kind Effect)
+import Effect.Aff (Aff, bracket)
+import Effect.Aff.Compat (EffectFnAff, fromEffectFnAff)
 import Data.Array (fromFoldable)
 import Data.ByteString (ByteString, toUTF8)
 import Data.Int53 (class Int53Value, Int53, toInt53, toString)
 import Data.Maybe (Maybe(..))
-import Data.NonEmpty (NonEmpty(..))
+import Data.NonEmpty (NonEmpty)
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 --------------------------------------------------------------------------------
-
-foreign import data REDIS :: Effect
 
 foreign import data Connection :: Type
 
@@ -92,10 +88,10 @@ defaultConfig =
   }
 
 withConnection
-  :: ∀ eff a
+  :: ∀ a
    . Config
-  -> (Connection -> Aff (redis :: REDIS | eff) a)
-  -> Aff (redis :: REDIS | eff) a
+  -> (Connection -> Aff a)
+  -> Aff a
 withConnection c = bracket (connect c) disconnect
 
 type Config' =
@@ -105,11 +101,11 @@ type Config' =
   , password :: Nullable String
   , port :: Int
   }
-foreign import connectImpl :: ∀ eff. Config' -> EffFnAff (redis :: REDIS | eff) Connection
-foreign import disconnectImpl :: ∀ eff. Connection -> EffFnAff (redis :: REDIS | eff) Unit
+foreign import connectImpl ::  Config' -> EffectFnAff Connection
+foreign import disconnectImpl :: Connection -> EffectFnAff Unit
 
-connect :: ∀ eff. Config -> Aff (redis :: REDIS | eff) Connection
-connect cfg = fromEffFnAff <<< connectImpl <<< ser $ cfg
+connect :: Config -> Aff Connection
+connect cfg = fromEffectFnAff <<< connectImpl <<< ser $ cfg
   where
   ser c =
     { db: toNullable c.db
@@ -119,8 +115,8 @@ connect cfg = fromEffFnAff <<< connectImpl <<< ser $ cfg
     , port: c.port
     }
 
-disconnect :: ∀ eff. Connection -> Aff (redis :: REDIS | eff) Unit
-disconnect = fromEffFnAff <<< disconnectImpl
+disconnect :: Connection -> Aff Unit
+disconnect = fromEffectFnAff <<< disconnectImpl
 
 --------------------------------------------------------------------------------
 
@@ -147,331 +143,280 @@ negInf = NegInf :: ZscoreInterval Int
 posInf = PosInf :: ZscoreInterval Int
 
 foreign import blpopImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> Array ByteString
   -> Int
-  -> EffFnAff
-      (redis :: REDIS | eff)
+  -> EffectFnAff
+
       (Nullable { key ∷ ByteString, value ∷ ByteString })
 foreign import brpopImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> Array ByteString
   -> Int
-  -> EffFnAff
-      (redis :: REDIS | eff)
+  -> EffectFnAff
+
       (Nullable { key ∷ ByteString, value ∷ ByteString })
 foreign import delImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> Array ByteString
-  -> EffFnAff (redis :: REDIS | eff) Unit
+  -> EffectFnAff Unit
 foreign import flushdbImpl
-  :: ∀ eff
-   . Connection
-  -> EffFnAff (redis :: REDIS | eff) Unit
+  :: Connection
+  -> EffectFnAff Unit
 foreign import getImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Nullable ByteString)
+  -> EffectFnAff (Nullable ByteString)
 foreign import hgetallImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> EffFnAff
-      (redis :: REDIS | eff)
+  -> EffectFnAff
       (Array { key :: ByteString, value :: ByteString })
 foreign import hgetImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Nullable ByteString)
+  -> EffectFnAff (Nullable ByteString)
 foreign import hsetImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import incrImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import keysImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+  -> EffectFnAff (Array ByteString)
 foreign import lpopImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Nullable ByteString)
+  -> EffectFnAff (Nullable ByteString)
 foreign import lpushImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import lrangeImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+  -> EffectFnAff (Array ByteString)
 foreign import ltrimImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> EffFnAff (redis :: REDIS | eff) Null
+  -> EffectFnAff Null
 foreign import rpopImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Nullable ByteString)
+  -> EffectFnAff (Nullable ByteString)
 foreign import rpushImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import mgetImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> Array ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Array ByteString)
+  -> EffectFnAff (Array ByteString)
 foreign import setImpl
-  :: ∀ eff
-  . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> Nullable { unit :: ByteString, value :: Int }
   -> Nullable ByteString
-  -> EffFnAff (redis :: REDIS | eff) Unit
+  -> EffectFnAff Unit
 -- | ZADD key [NX|XX] [CH]
 -- | INCR mode would be supported by `zaddIncrImpl`
 foreign import zaddImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Nullable ByteString
   -> Nullable ByteString
   -> Array (Zitem Int53)
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import zcardImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import zincrbyImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int53
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int53
+  -> EffectFnAff Int53
 foreign import zrangeImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> EffFnAff (redis :: REDIS | eff) (Array (Zitem Int53))
+  -> EffectFnAff (Array (Zitem Int53))
 foreign import zrangebyscoreImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> ByteString
   -> Nullable Zlimit
-  -> EffFnAff (redis :: REDIS | eff) (Array (Zitem Int53))
+  -> EffectFnAff (Array (Zitem Int53))
 foreign import zrankImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Nullable Int)
+  -> EffectFnAff (Nullable Int)
 foreign import zremImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Array ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import zremrangebylexImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import zremrangebyrankImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import zremrangebyscoreImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) Int
+  -> EffectFnAff Int
 foreign import zrevrangebyscoreImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> ByteString
   -> Nullable Zlimit
-  -> EffFnAff (redis :: REDIS | eff) (Array (Zitem Int53))
+  -> EffectFnAff (Array (Zitem Int53))
 foreign import zscoreImpl
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> EffFnAff (redis :: REDIS | eff) (Nullable Int53)
+  -> EffectFnAff (Nullable Int53)
 blpop
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> NonEmpty Array ByteString
   -> Int
-  -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
-blpop conn keys timeout = toMaybe <$> (fromEffFnAff $ blpopImpl conn (fromFoldable keys) timeout)
+  -> Aff (Maybe {key ∷ ByteString, value ∷ ByteString})
+blpop conn keys' timeout = toMaybe <$> (fromEffectFnAff $ blpopImpl conn (fromFoldable keys') timeout)
 blpopIndef
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> NonEmpty Array ByteString
-  -> Aff (redis :: REDIS | eff) {key ∷ ByteString, value ∷ ByteString}
-blpopIndef conn keys = unsafeCoerce (fromEffFnAff $ blpopImpl conn (fromFoldable keys) 0)
+  -> Aff {key ∷ ByteString, value ∷ ByteString}
+blpopIndef conn keys' = unsafeCoerce (fromEffectFnAff $ blpopImpl conn (fromFoldable keys') 0)
 brpop
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> NonEmpty Array ByteString
   -> Int
-  -> Aff (redis :: REDIS | eff) (Maybe {key ∷ ByteString, value ∷ ByteString})
-brpop conn keys timeout = toMaybe <$> (fromEffFnAff $ brpopImpl conn (fromFoldable keys) timeout)
+  -> Aff (Maybe {key ∷ ByteString, value ∷ ByteString})
+brpop conn keys' timeout = toMaybe <$> (fromEffectFnAff $ brpopImpl conn (fromFoldable keys') timeout)
 brpopIndef
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> NonEmpty Array ByteString
-  -> Aff (redis :: REDIS | eff) {key ∷ ByteString, value ∷ ByteString}
-brpopIndef conn keys = unsafeCoerce (fromEffFnAff $ brpopImpl conn (fromFoldable keys) 0)
+  -> Aff {key ∷ ByteString, value ∷ ByteString}
+brpopIndef conn keys' = unsafeCoerce (fromEffectFnAff $ brpopImpl conn (fromFoldable keys') 0)
 del
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> NonEmpty Array ByteString
-  -> Aff (redis :: REDIS | eff) Unit
-del conn = fromEffFnAff <<< delImpl conn <<< fromFoldable
+  -> Aff Unit
+del conn = fromEffectFnAff <<< delImpl conn <<< fromFoldable
 flushdb
-  :: ∀ eff
-   . Connection
-  -> Aff (redis :: REDIS | eff) Unit
-flushdb = fromEffFnAff <<< flushdbImpl
+  :: Connection
+  -> Aff Unit
+flushdb = fromEffectFnAff <<< flushdbImpl
 get
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-get conn key = toMaybe <$> (fromEffFnAff $ getImpl conn key)
+  -> Aff (Maybe ByteString)
+get conn key = toMaybe <$> (fromEffectFnAff $ getImpl conn key)
 hget
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-hget conn key field = toMaybe <$> (fromEffFnAff $ hgetImpl conn key field)
+  -> Aff (Maybe ByteString)
+hget conn key field = toMaybe <$> (fromEffectFnAff $ hgetImpl conn key field)
 hgetall
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Array {key :: ByteString, value :: ByteString})
-hgetall conn = fromEffFnAff <<< hgetallImpl conn
+  -> Aff (Array {key :: ByteString, value :: ByteString})
+hgetall conn = fromEffectFnAff <<< hgetallImpl conn
 hset
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | eff) Int
-hset conn key field = fromEffFnAff <<< hsetImpl conn key field
+  -> Aff Int
+hset conn key field = fromEffectFnAff <<< hsetImpl conn key field
 incr
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> Aff (redis :: REDIS | eff) Int
-incr conn = fromEffFnAff <<< incrImpl conn
+  -> Aff Int
+incr conn = fromEffectFnAff <<< incrImpl conn
 keys
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Array ByteString)
-keys conn = fromEffFnAff <<< keysImpl conn
+  -> Aff (Array ByteString)
+keys conn = fromEffectFnAff <<< keysImpl conn
 lpop
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-lpop conn key = toMaybe <$> (fromEffFnAff $ lpopImpl conn key)
+  -> Aff (Maybe ByteString)
+lpop conn key = toMaybe <$> (fromEffectFnAff $ lpopImpl conn key)
 lpush
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | eff) Int
-lpush conn key = fromEffFnAff <<< lpushImpl conn key
+  -> Aff Int
+lpush conn key = fromEffectFnAff <<< lpushImpl conn key
 lrange
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> Aff (redis :: REDIS | eff) (Array ByteString)
-lrange conn key start = fromEffFnAff <<< lrangeImpl conn key start
+  -> Aff (Array ByteString)
+lrange conn key start = fromEffectFnAff <<< lrangeImpl conn key start
 ltrim
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> Aff (redis :: REDIS | eff) Unit
-ltrim conn key start end = unit <$ (fromEffFnAff $ ltrimImpl conn key start end)
+  -> Aff Unit
+ltrim conn key start end = unit <$ (fromEffectFnAff $ ltrimImpl conn key start end)
 mget
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> NonEmpty Array ByteString
-  -> Aff (redis :: REDIS | eff) (Array ByteString)
-mget conn = fromEffFnAff <<< mgetImpl conn <<< fromFoldable
+  -> Aff (Array ByteString)
+mget conn = fromEffectFnAff <<< mgetImpl conn <<< fromFoldable
 rpop
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Maybe ByteString)
-rpop conn key = toMaybe <$> (fromEffFnAff $ rpopImpl conn key)
+  -> Aff (Maybe ByteString)
+rpop conn key = toMaybe <$> (fromEffectFnAff $ rpopImpl conn key)
 rpush
-  :: ∀ eff
-  . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | eff) Int
-rpush conn key = fromEffFnAff <<< rpushImpl conn key
+  -> Aff Int
+rpush conn key = fromEffectFnAff <<< rpushImpl conn key
 set
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> Maybe Expire
   -> Maybe Write
-  -> Aff (redis :: REDIS | eff) Unit
-set conn key value expire write = fromEffFnAff $ setImpl conn key value expire' write'
+  -> Aff Unit
+set conn key value expire write = fromEffectFnAff $ setImpl conn key value expire' write'
   where
   serExpire (PX v) = { unit: toUTF8 "PX", value: v }
   serExpire (EX v) = { unit: toUTF8 "EX", value: v }
@@ -485,46 +430,48 @@ set conn key value expire write = fromEffFnAff $ setImpl conn key value expire' 
 -- | ZADD key XX CH score member [score member]
 -- | ZADD key NX score member [score member]
 zadd
-  :: ∀ eff i
+  :: ∀ i
    . Int53Value i
   => Connection
   -> ByteString
   -> Zadd
   -> NonEmpty Array (Zitem i)
-  -> Aff ( redis :: REDIS | eff) Int
+  -> Aff Int
 zadd conn key mode =
-  fromEffFnAff <<< zaddImpl conn key write' return' <<< map (\r → r { score = toInt53 r.score }) <<< fromFoldable
+  fromEffectFnAff <<< zaddImpl conn key write' return' <<< map (\r → r { score = toInt53 r.score }) <<< fromFoldable
   where
   Tuple write' return' = case mode of
     ZaddAll Changed -> Tuple (toNullable Nothing) (toNullable $ Just (toUTF8 "CH"))
     ZaddAll Added -> Tuple (toNullable Nothing) (toNullable $ Nothing)
     ZaddRestrict XX -> Tuple (toNullable $ Just (serWrite XX)) (toNullable $ Just (toUTF8 "CH"))
     ZaddRestrict NX -> Tuple (toNullable $ Just (serWrite NX)) (toNullable Nothing)
+
 zcard
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
-  -> Aff ( redis :: REDIS | eff) Int
-zcard conn = fromEffFnAff <<< zcardImpl conn
+  -> Aff Int
+zcard conn = fromEffectFnAff <<< zcardImpl conn
+
 zincrby
-  :: ∀ eff i
+  :: ∀ i
    . Int53Value i
   => Connection
   -> ByteString
   -> i
   -> ByteString
-  -> Aff (redis :: REDIS | eff) Int53
-zincrby conn key increment = fromEffFnAff <<< zincrbyImpl conn key (toInt53 increment)
+  -> Aff Int53
+zincrby conn key increment = fromEffectFnAff <<< zincrbyImpl conn key (toInt53 increment)
+
 zrange
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> Aff (redis :: REDIS | eff) (Array (Zitem Int53))
-zrange conn key start = fromEffFnAff <<< zrangeImpl conn key start
+  -> Aff (Array (Zitem Int53))
+zrange conn key start = fromEffectFnAff <<< zrangeImpl conn key start
+
 zrangebyscore
-  :: ∀ eff max min
+  :: ∀ max min
    . Int53Value min
   => Int53Value max
   => Connection
@@ -532,57 +479,56 @@ zrangebyscore
   -> (ZscoreInterval min)
   -> (ZscoreInterval max)
   -> Maybe Zlimit
-  -> Aff (redis :: REDIS | eff) (Array (Zitem Int53))
-zrangebyscore conn key min max limit = fromEffFnAff $ zrangebyscoreImpl conn key min' max' limit'
+  -> Aff (Array (Zitem Int53))
+zrangebyscore conn key min max limit = fromEffectFnAff $ zrangebyscoreImpl conn key min' max' limit'
   where
   min' = serZscoreInterval min
   max' = serZscoreInterval max
   limit' = toNullable limit
+
 zrank
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Maybe Int)
-zrank conn key member = toMaybe <$> (fromEffFnAff $ zrankImpl conn key member)
+  -> Aff (Maybe Int)
+zrank conn key member = toMaybe <$> (fromEffectFnAff $ zrankImpl conn key member)
+
 zrem
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> NonEmpty Array ByteString
-  -> Aff (redis :: REDIS | eff) Int
-zrem conn key = fromEffFnAff <<< zremImpl conn key <<< fromFoldable
+  -> Aff Int
+zrem conn key = fromEffectFnAff <<< zremImpl conn key <<< fromFoldable
+
 zremrangebylex
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | eff) Int
-zremrangebylex conn key min = fromEffFnAff <<< zremrangebylexImpl conn key min
+  -> Aff Int
+zremrangebylex conn key min = fromEffectFnAff <<< zremrangebylexImpl conn key min
 zremrangebyrank
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> Int
   -> Int
-  -> Aff (redis :: REDIS | eff) Int
-zremrangebyrank conn key min = fromEffFnAff <<< zremrangebyrankImpl conn key min
+  -> Aff Int
+zremrangebyrank conn key min = fromEffectFnAff <<< zremrangebyrankImpl conn key min
 zremrangebyscore
-  :: ∀ eff max min
+  :: ∀ max min
    . Int53Value min
   => Int53Value max
   => Connection
   -> ByteString
   -> (ZscoreInterval min)
   -> (ZscoreInterval max)
-  -> Aff (redis :: REDIS | eff) Int
-zremrangebyscore conn key min max = fromEffFnAff $ zremrangebyscoreImpl conn key min' max'
+  -> Aff Int
+zremrangebyscore conn key min max = fromEffectFnAff $ zremrangebyscoreImpl conn key min' max'
   where
   min' = serZscoreInterval min
   max' = serZscoreInterval max
 zrevrangebyscore
-  :: ∀ eff max min
+  :: ∀ max min
    . Int53Value min
   => Int53Value max
   => Connection
@@ -590,17 +536,16 @@ zrevrangebyscore
   -> (ZscoreInterval min)
   -> (ZscoreInterval max)
   -> Maybe Zlimit
-  -> Aff (redis :: REDIS | eff) (Array (Zitem Int53))
-zrevrangebyscore conn key min max limit = fromEffFnAff $ zrevrangebyscoreImpl conn key min' max' limit'
+  -> Aff (Array (Zitem Int53))
+zrevrangebyscore conn key min max limit = fromEffectFnAff $ zrevrangebyscoreImpl conn key min' max' limit'
   where
   min' = serZscoreInterval min
   max' = serZscoreInterval max
   limit' = toNullable limit
 
 zscore
-  :: ∀ eff
-   . Connection
+  :: Connection
   -> ByteString
   -> ByteString
-  -> Aff (redis :: REDIS | eff) (Maybe Int53)
-zscore conn key = (toMaybe <$> _) <<< fromEffFnAff <<< zscoreImpl conn key
+  -> Aff (Maybe Int53)
+zscore conn key = (toMaybe <$> _) <<< fromEffectFnAff <<< zscoreImpl conn key
