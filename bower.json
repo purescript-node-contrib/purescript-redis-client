@@ -7,17 +7,17 @@
   },
   "dependencies": {
     "purescript-aff": "^5.0.1",
+    "purescript-arrays": "^5.0.0",
     "purescript-transformers": "^4.1.0",
-    "purescript-bytestrings": "adamczykm/purescript-bytestrings#7.0.0",
+    "purescript-bytestrings": "^7.0.0",
     "purescript-either": "^4.0.0",
     "purescript-maybe": "^4.0.0",
-    "purescript-prelude": "^4.0.1",
+    "purescript-prelude": "^4.1.0",
     "purescript-nullable": "^4.0.0",
-    "purescript-int-53": "lambdaterms-forks/purescript-int-53#767e2e6a61e7992eb975f80c080fee9a0ea931ad"
+    "purescript-int-53": "^4.0.0"
   },
   "devDependencies": {
     "purescript-test-unit": "^14.0.0",
-    "purescript-node-buffer": "^5.0.0",
-    "purescript-arrays": "^5.0.0"
+    "purescript-node-buffer": "^5.0.0"
   }
 }
