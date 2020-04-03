@@ -6,6 +6,7 @@ module Database.Redis
   , IPFamily
   , negInf
   , posInf
+  , ScanStreamOptions
   , Write(..)
   , Zadd(..)
   , ZaddReturn(..)
@@ -22,6 +23,7 @@ module Database.Redis
   , hget
   , hgetall
   , hset
+  , hscanStream
   , get
   , incr
   , keys
@@ -33,6 +35,7 @@ module Database.Redis
   , rpop
   , rpush
   , set
+  , scanStream
   , withConnection
   , zadd
   , zcard
@@ -59,6 +62,7 @@ import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty)
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
+import Prim.Row (class Union)
 import Unsafe.Coerce (unsafeCoerce)
 
 --------------------------------------------------------------------------------
@@ -549,3 +553,26 @@ zscore
   -> ByteString
   -> Aff (Maybe Int53)
 zscore conn key = (toMaybe <$> _) <<< fromEffectFnAff <<< zscoreImpl conn key
+
+type ScanStreamOptions = 
+  ( count :: Int 
+  , match :: String 
+  )
+
+foreign import scanStreamImpl :: forall opts. Connection -> Record opts -> EffectFnAff (Array String)
+foreign import hscanStreamImpl :: forall opts. Connection -> Record opts -> String -> EffectFnAff (Array {key :: String, value :: String})
+
+scanStream :: forall options t. 
+  Union options t ScanStreamOptions 
+  => Connection 
+  -> Record options 
+  -> Aff (Array String)
+scanStream redis options = fromEffectFnAff $ scanStreamImpl redis options
+
+hscanStream :: forall options t. 
+  Union options t ScanStreamOptions 
+  => Connection 
+  -> Record options 
+  -> String
+  -> Aff (Array {key :: String, value :: String})
+hscanStream redis options hash = fromEffectFnAff $ hscanStreamImpl redis options hash

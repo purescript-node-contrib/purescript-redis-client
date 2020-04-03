@@ -4,11 +4,9 @@ module Test.Main
 
 import Prelude
 
-import Effect.Aff (Aff, Milliseconds(Milliseconds), delay, forkAff)
-import Effect (Effect)
 import Control.Monad.Except (catchError, throwError)
 import Data.Array (drop, filter, fromFoldable, sort, sortWith, take)
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, Encoding(..))
 import Data.ByteString as ByteString
 import Data.Foldable (length)
 import Data.Int53 (fromInt)
@@ -16,6 +14,8 @@ import Data.Maybe (Maybe(..))
 import Data.NonEmpty (singleton, (:|))
 import Database.Redis (Connection, Expire(..), Write(..), ZscoreInterval(..), Config, defaultConfig, flushdb, keys, negInf, posInf, withConnection)
 import Database.Redis as Redis
+import Effect (Effect)
+import Effect.Aff (Aff, Milliseconds(Milliseconds), delay, forkAff)
 import Test.Unit (TestSuite, suite)
 import Test.Unit as Test.Unit
 import Test.Unit.Assert as Assert
@@ -23,6 +23,9 @@ import Test.Unit.Main (runTest)
 
 b :: String -> ByteString
 b = ByteString.toUTF8
+
+text :: ByteString -> String 
+text = flip ByteString.toString UTF8
 
 test
   :: forall a
@@ -470,3 +473,25 @@ main = runTest $ do
           void $ Redis.rpush conn2 testList value1
         v <- Redis.brpopIndef conn (singleton testList)
         Assert.equal v.value value1
+
+    suite "scan stream" do
+      test addr "scan stream all keys" $ \conn -> do
+        void $ Redis.incr conn key1
+        void $ Redis.incr conn key2
+        got <- Redis.scanStream conn {}
+        Assert.equal (sort [text key1, text key2]) (sort got)
+
+    suite "hscan stream" do
+      let
+        testHash = b "testHash"
+        value1 = { key: key1, value: b "val1" }
+        value2 = { key: key2, value: b "val2" }
+
+      test addr "hscan stream all keys" $ \conn -> do
+        void $ Redis.hset conn testHash value1.key value1.value
+        void $ Redis.hset conn testHash value2.key value2.value
+        values <- Redis.hscanStream conn {} (text testHash)
+
+        Assert.equal
+          [text value1.value, text value2.value]
+          (map _.value <<< sortWith _.key $ values)
