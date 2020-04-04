@@ -652,25 +652,57 @@ exports.scanStreamImpl = function(conn){
 exports.hscanStreamImpl = function(conn){
   return function(options){
     return function(hash){
-      return function (onError, onSuccess){
-        var stream = conn.hscanStream(hash,options) 
-        
-        // `resultKeys` is an array of strings representing key names.
-        // Note that resultKeys may contain 0 keys, and that it will sometimes
-        // contain duplicates due to SCAN's implementation in Redis.
-        // woody: Should I check for duplicates here or leave it to end user??
-        stream.on("data", function(result){
-          var arr = [];
-          for (var i = 0; i < result.length; i += 2) {
-            arr.push({ key: result[i], value: result[i + 1] });
+      return function(tuple){
+        return function (onError, onSuccess){
+          var stream = conn.hscanStream(hash,options) 
+          
+          // `resultKeys` is an array of strings representing key names.
+          // Note that resultKeys may contain 0 keys, and that it will sometimes
+          // contain duplicates due to SCAN's implementation in Redis.
+          // woody: Should I check for duplicates here or leave it to end user??
+          stream.on("data", function(result){
+            var arr = [];
+            for (var i = 0; i < result.length; i += 2) {
+              arr.push({ key: result[i], value: result[i + 1] });
+            }
+            onSuccess(tuple(arr)(stream))
+          })
+
+          stream.on("error", onError)
+
+          return function (cancelError, cancelerError, cancelerSuccess) {
+              cancelerSuccess()
           }
-          onSuccess(tuple(arr)(stream))
-        })
+        }
+      }
+    }
+  }
+}
 
-        stream.on("error", onError)
+exports.zscanStreamImpl = function(conn){
+  return function(options){
+    return function(key){
+      return function(tuple){
+        return function (onError, onSuccess){
+          var stream = conn.zscanStream(key,options) 
+          
+          // `resultKeys` is an array of strings representing key names.
+          // Note that resultKeys may contain 0 keys, and that it will sometimes
+          // contain duplicates due to SCAN's implementation in Redis.
+          // woody: Should I check for duplicates here or leave it to end user??
+          stream.on("data", function(result){
+            var arr = [];
+            for (var i = 0; i < result.length; i += 2) {
+              arr.push({ member: result[i], value: parseFloat(result[i + 1]) });
+            }
+            onSuccess(tuple(arr)(stream))
+          })
 
-        return function (cancelError, cancelerError, cancelerSuccess) {
-            cancelerSuccess()
+          stream.on("error", onError)
+
+          return function (cancelError, cancelerError, cancelerSuccess) {
+              cancelerSuccess()
+          }
         }
       }
     }

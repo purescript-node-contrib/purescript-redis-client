@@ -48,6 +48,7 @@ module Database.Redis
   , zremrangebyrank
   , zremrangebyscore
   , zrevrangebyscore
+  , zscanStream
   , zscore
   ) where
 
@@ -573,6 +574,12 @@ foreign import hscanStreamImpl :: forall opts.
   -> (Array {key :: String, value :: String} -> Readable () -> Tuple (Array {key :: String, value :: String}) (Readable ())) 
   -> EffectFnAff (Tuple (Array {key :: String, value :: String}) (Readable ())) 
 
+foreign import zscanStreamImpl :: forall opts. 
+  Connection 
+  -> Record opts 
+  -> String 
+  -> (Array {member :: String, score :: Int} -> Readable () -> Tuple (Array {member :: String, score :: Int}) (Readable ())) 
+  -> EffectFnAff (Tuple (Array {member :: String, score :: Int}) (Readable ())) 
 
 scanStream :: forall options t. 
   Union options t ScanStreamOptions 
@@ -588,3 +595,11 @@ hscanStream :: forall options t.
   -> String
   -> Aff (Tuple (Array {key :: String, value :: String}) (Readable ()))
 hscanStream redis options hash = fromEffectFnAff $ hscanStreamImpl redis options hash Tuple
+
+zscanStream :: forall options t. 
+  Union options t ScanStreamOptions 
+  => Connection 
+  -> Record options 
+  -> String
+  -> Aff (Tuple (Array {member :: String, score :: Int}) (Readable ()))
+zscanStream redis options key = fromEffectFnAff $ zscanStreamImpl redis options key Tuple

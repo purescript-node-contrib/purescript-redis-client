@@ -475,20 +475,19 @@ main = runTest $ do
         v <- Redis.brpopIndef conn (singleton testList)
         Assert.equal v.value value1
 
-    suite "scan stream" do
-      test addr "scan stream all keys" $ \conn -> do
+    suite "scan streams" do
+      test addr "keys" $ \conn -> do
         void $ Redis.incr conn key1
         void $ Redis.incr conn key2
         got <- fst <$> Redis.scanStream conn {}
         Assert.equal (sort [text key1, text key2]) (sort got)
 
-    suite "hscan stream" do
-      let
-        testHash = b "testHash"
-        value1 = { key: key1, value: b "val1" }
-        value2 = { key: key2, value: b "val2" }
+      test addr "hash" $ \conn -> do
+        let
+          testHash = b "testHash"
+          value1 = { key: key1, value: b "val1" }
+          value2 = { key: key2, value: b "val2" }
 
-      test addr "hscan stream all keys" $ \conn -> do
         void $ Redis.hset conn testHash value1.key value1.value
         void $ Redis.hset conn testHash value2.key value2.value
         values <- fst <$> Redis.hscanStream conn {} (text testHash)
@@ -496,3 +495,19 @@ main = runTest $ do
         Assert.equal
           [text value1.value, text value2.value]
           (map _.value <<< sortWith _.key $ values)
+
+      test addr "sorted set" $ \conn -> do
+        let
+          testSet = b "testSet"
+          members =
+            {member: b "m1", score: 1 } :| [{ member: b "m2", score: 2 } , { member: b "m3", score: 3 }]
+
+        void $ Redis.zadd
+          conn
+          testSet
+          (Redis.ZaddAll Redis.Added)
+          members
+
+        values <- fst <$> Redis.zscanStream conn {} (text testSet)
+
+        Assert.equal (map _.score $ fromFoldable members) (map _.score values)
