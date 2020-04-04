@@ -12,6 +12,7 @@ import Data.Foldable (length)
 import Data.Int53 (fromInt)
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (singleton, (:|))
+import Data.Tuple (fst)
 import Database.Redis (Connection, Expire(..), Write(..), ZscoreInterval(..), Config, defaultConfig, flushdb, keys, negInf, posInf, withConnection)
 import Database.Redis as Redis
 import Effect (Effect)
@@ -478,7 +479,7 @@ main = runTest $ do
       test addr "scan stream all keys" $ \conn -> do
         void $ Redis.incr conn key1
         void $ Redis.incr conn key2
-        got <- Redis.scanStream conn {}
+        got <- fst <$> Redis.scanStream conn {}
         Assert.equal (sort [text key1, text key2]) (sort got)
 
     suite "hscan stream" do
@@ -490,7 +491,7 @@ main = runTest $ do
       test addr "hscan stream all keys" $ \conn -> do
         void $ Redis.hset conn testHash value1.key value1.value
         void $ Redis.hset conn testHash value2.key value2.value
-        values <- Redis.hscanStream conn {} (text testHash)
+        values <- fst <$> Redis.hscanStream conn {} (text testHash)
 
         Assert.equal
           [text value1.value, text value2.value]

@@ -63,6 +63,7 @@ import Data.NonEmpty (NonEmpty)
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
 import Prim.Row (class Union)
+import Node.Stream 
 import Unsafe.Coerce (unsafeCoerce)
 
 --------------------------------------------------------------------------------
@@ -559,20 +560,31 @@ type ScanStreamOptions =
   , match :: String 
   )
 
-foreign import scanStreamImpl :: forall opts. Connection -> Record opts -> EffectFnAff (Array String)
-foreign import hscanStreamImpl :: forall opts. Connection -> Record opts -> String -> EffectFnAff (Array {key :: String, value :: String})
+foreign import scanStreamImpl :: forall opts. 
+  Connection 
+  -> Record opts 
+  -> (Array String -> Readable () -> Tuple (Array String) (Readable ())) 
+  -> EffectFnAff (Tuple (Array String) (Readable ()))
+
+foreign import hscanStreamImpl :: forall opts. 
+  Connection 
+  -> Record opts 
+  -> String 
+  -> (Array {key :: String, value :: String} -> Readable () -> Tuple (Array {key :: String, value :: String}) (Readable ())) 
+  -> EffectFnAff (Tuple (Array {key :: String, value :: String}) (Readable ())) 
+
 
 scanStream :: forall options t. 
   Union options t ScanStreamOptions 
   => Connection 
   -> Record options 
-  -> Aff (Array String)
-scanStream redis options = fromEffectFnAff $ scanStreamImpl redis options
+  -> Aff (Tuple (Array String) (Readable ()))
+scanStream redis options = fromEffectFnAff $ scanStreamImpl redis options Tuple
 
 hscanStream :: forall options t. 
   Union options t ScanStreamOptions 
   => Connection 
   -> Record options 
   -> String
-  -> Aff (Array {key :: String, value :: String})
-hscanStream redis options hash = fromEffectFnAff $ hscanStreamImpl redis options hash
+  -> Aff (Tuple (Array {key :: String, value :: String}) (Readable ()))
+hscanStream redis options hash = fromEffectFnAff $ hscanStreamImpl redis options hash Tuple
