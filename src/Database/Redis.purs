@@ -6,6 +6,7 @@ module Database.Redis
   , IPFamily
   , negInf
   , posInf
+  , ScanStreamOptions
   , Write(..)
   , Zadd(..)
   , ZaddReturn(..)
@@ -22,6 +23,7 @@ module Database.Redis
   , hget
   , hgetall
   , hset
+  , hscanStream
   , get
   , incr
   , keys
@@ -33,6 +35,7 @@ module Database.Redis
   , rpop
   , rpush
   , set
+  , scanStream
   , withConnection
   , zadd
   , zcard
@@ -45,6 +48,7 @@ module Database.Redis
   , zremrangebyrank
   , zremrangebyscore
   , zrevrangebyscore
+  , zscanStream
   , zscore
   ) where
 
@@ -59,6 +63,8 @@ import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty)
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Tuple (Tuple(..))
+import Prim.Row (class Union)
+import Node.Stream 
 import Unsafe.Coerce (unsafeCoerce)
 
 --------------------------------------------------------------------------------
@@ -549,3 +555,51 @@ zscore
   -> ByteString
   -> Aff (Maybe Int53)
 zscore conn key = (toMaybe <$> _) <<< fromEffectFnAff <<< zscoreImpl conn key
+
+type ScanStreamOptions = 
+  ( count :: Int 
+  , match :: String 
+  )
+
+foreign import scanStreamImpl :: forall opts. 
+  Connection 
+  -> Record opts 
+  -> (Array String -> Readable () -> Tuple (Array String) (Readable ())) 
+  -> EffectFnAff (Tuple (Array String) (Readable ()))
+
+foreign import hscanStreamImpl :: forall opts. 
+  Connection 
+  -> Record opts 
+  -> String 
+  -> (Array {key :: String, value :: String} -> Readable () -> Tuple (Array {key :: String, value :: String}) (Readable ())) 
+  -> EffectFnAff (Tuple (Array {key :: String, value :: String}) (Readable ())) 
+
+foreign import zscanStreamImpl :: forall opts. 
+  Connection 
+  -> Record opts 
+  -> String 
+  -> (Array {member :: String, score :: Int} -> Readable () -> Tuple (Array {member :: String, score :: Int}) (Readable ())) 
+  -> EffectFnAff (Tuple (Array {member :: String, score :: Int}) (Readable ())) 
+
+scanStream :: forall options t. 
+  Union options t ScanStreamOptions 
+  => Connection 
+  -> Record options 
+  -> Aff (Tuple (Array String) (Readable ()))
+scanStream redis options = fromEffectFnAff $ scanStreamImpl redis options Tuple
+
+hscanStream :: forall options t. 
+  Union options t ScanStreamOptions 
+  => Connection 
+  -> Record options 
+  -> String
+  -> Aff (Tuple (Array {key :: String, value :: String}) (Readable ()))
+hscanStream redis options hash = fromEffectFnAff $ hscanStreamImpl redis options hash Tuple
+
+zscanStream :: forall options t. 
+  Union options t ScanStreamOptions 
+  => Connection 
+  -> Record options 
+  -> String
+  -> Aff (Tuple (Array {member :: String, score :: Int}) (Readable ()))
+zscanStream redis options key = fromEffectFnAff $ zscanStreamImpl redis options key Tuple
