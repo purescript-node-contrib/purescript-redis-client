@@ -14,20 +14,20 @@
         "output"
     ],
     "dependencies": {
-        "purescript-aff": "^v5.1.2",
-        "purescript-arrays": "^v5.3.1",
+        "purescript-aff": "^v6.0.0",
+        "purescript-arrays": "^v6.0.1",
         "purescript-bytestrings": "^v8.0.0",
-        "purescript-console": "^v4.4.0",
-        "purescript-effect": "^v2.0.1",
-        "purescript-either": "^v4.1.1",
-        "purescript-int-53": "^v4.0.0",
-        "purescript-maybe": "^v4.0.1",
-        "purescript-nullable": "^v4.1.1",
-        "purescript-prelude": "^v4.1.1",
-        "purescript-transformers": "^v4.2.0"
-    },
-    "devDependencies": {
-        "purescript-psci-support": "^v4.0.0",
-        "purescript-test-unit": "^v15.0.0"
+        "purescript-effect": "^v3.0.0",
+        "purescript-foldable-traversable": "^v5.0.1",
+        "purescript-int-53": "https://github.com/paluh/purescript-int-53.git#e4ebfe7edbf9f5275efec14e53d643b6cd505720",
+        "purescript-maybe": "^v5.0.0",
+        "purescript-nonempty": "^v6.0.0",
+        "purescript-nullable": "^v5.0.0",
+        "purescript-prelude": "^v5.0.1",
+        "purescript-psci-support": "^v5.0.0",
+        "purescript-test-unit": "^v16.0.0",
+        "purescript-transformers": "^v5.2.0",
+        "purescript-tuples": "^v6.0.1",
+        "purescript-unsafe-coerce": "^v5.0.0"
     }
 }
