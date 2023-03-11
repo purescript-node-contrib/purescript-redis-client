@@ -14,7 +14,6 @@ You can edit this file as you like.
   , "nonempty"
   , "nullable"
   , "prelude"
-  , "psci-support"
   , "test-unit"
   , "transformers"
   , "tuples"

@@ -1,6 +1,6 @@
 'use strict';
 
-var ioredis = require('ioredis');
+import ioredis from 'ioredis';
 
 ioredis.Command.setReplyTransformer('hgetall', function (result) {
   var arr = [];
@@ -10,7 +10,7 @@ ioredis.Command.setReplyTransformer('hgetall', function (result) {
   return arr;
 });
 
-exports._handleBlockingPopResult = function(onError, onSuccess) {
+export const _handleBlockingPopResult = function(onError, onSuccess) {
   return function(err, val) {
     if (err !== null) {
       onError(err);
@@ -25,11 +25,11 @@ exports._handleBlockingPopResult = function(onError, onSuccess) {
   };
 };
 
-exports.blpopImpl = function(conn) {
+export const blpopImpl = function(conn) {
   return function(keys) {
     return function(timeout) {
       return function(onError, onSuccess) {
-        var handler = exports._handleBlockingPopResult(onError, onSuccess);
+        var handler = _handleBlockingPopResult(onError, onSuccess);
         conn.blpopBuffer.apply(conn, [keys, timeout, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
@@ -39,11 +39,11 @@ exports.blpopImpl = function(conn) {
   };
 };
 
-exports.brpopImpl = function(conn) {
+export const brpopImpl = function(conn) {
   return function(keys) {
     return function(timeout) {
       return function(onError, onSuccess) {
-        var handler = exports._handleBlockingPopResult(onError, onSuccess);
+        var handler = _handleBlockingPopResult(onError, onSuccess);
         conn.brpopBuffer.apply(conn, [keys, timeout, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
@@ -53,7 +53,7 @@ exports.brpopImpl = function(conn) {
   };
 };
 
-exports.connectImpl = function(connstr) {
+export const connectImpl = function(connstr) {
   return function(onError, onSuccess) {
     var redis = new ioredis(connstr);
     redis.connect(function() {
@@ -65,7 +65,7 @@ exports.connectImpl = function(connstr) {
   };
 };
 
-exports.disconnectImpl = function(conn) {
+export const disconnectImpl = function(conn) {
   return function(onError, onSuccess) {
     conn.disconnect();
     onSuccess();
@@ -75,7 +75,7 @@ exports.disconnectImpl = function(conn) {
   };
 };
 
-exports.delImpl = function(conn) {
+export const delImpl = function(conn) {
   return function(keys) {
     return function(onError, onSuccess) {
       if (keys.length === 0) {
@@ -96,7 +96,7 @@ exports.delImpl = function(conn) {
   };
 };
 
-exports.flushdbImpl = function(conn) {
+export const flushdbImpl = function(conn) {
   return function(onError, onSuccess) {
     conn.flushdb();
     onSuccess();
@@ -106,7 +106,7 @@ exports.flushdbImpl = function(conn) {
   };
 };
 
-exports.getImpl = function(conn) {
+export const getImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
       conn.getBuffer(key, function(err, value) {
@@ -123,7 +123,7 @@ exports.getImpl = function(conn) {
   };
 };
 
-exports.hgetallImpl = function(conn) {
+export const hgetallImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
       conn.hgetallBuffer(key, function(err, value) {
@@ -140,7 +140,7 @@ exports.hgetallImpl = function(conn) {
   };
 };
 
-exports.hgetImpl = function(conn) {
+export const hgetImpl = function(conn) {
   return function(key) {
     return function(field) {
       return function(onError, onSuccess) {
@@ -159,7 +159,7 @@ exports.hgetImpl = function(conn) {
   };
 };
 
-exports.hsetImpl = function(conn) {
+export const hsetImpl = function(conn) {
   return function(key) {
     return function(field) {
       return function(value) {
@@ -180,7 +180,7 @@ exports.hsetImpl = function(conn) {
   };
 };
 
-exports.incrImpl = function(conn) {
+export const incrImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
       conn.incr(key, function(err, value) {
@@ -197,7 +197,7 @@ exports.incrImpl = function(conn) {
   };
 };
 
-exports.keysImpl = function(conn) {
+export const keysImpl = function(conn) {
   return function(pattern) {
     return function(onError, onSuccess) {
       conn.keysBuffer(pattern, function(err, value) {
@@ -214,10 +214,10 @@ exports.keysImpl = function(conn) {
   };
 };
 
-exports.lpopImpl = function(conn) {
+export const lpopImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
-      var handler = exports._plainValueHandler(onError, onSuccess);
+      var handler = _plainValueHandler(onError, onSuccess);
       conn.lpopBuffer.apply(conn, [key, handler]);
       return function(cancelError, cancelerError, cancelerSuccess) {
         cancelError();
@@ -226,11 +226,11 @@ exports.lpopImpl = function(conn) {
   };
 };
 
-exports.lpushImpl = function(conn) {
+export const lpushImpl = function(conn) {
   return function(key) {
     return function(value) {
       return function(onError, onSuccess) {
-        var handler = exports._intHandler(onError, onSuccess, false);
+        var handler = _intHandler(onError, onSuccess, false);
         conn.lpushBuffer.apply(conn, [key, value, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
@@ -240,10 +240,10 @@ exports.lpushImpl = function(conn) {
   };
 };
 
-exports.rpopImpl = function(conn) {
+export const rpopImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
-      var handler = exports._plainValueHandler(onError, onSuccess);
+      var handler = _plainValueHandler(onError, onSuccess);
       conn.rpopBuffer.apply(conn, [key, handler]);
       return function(cancelError, cancelerError, cancelerSuccess) {
         cancelError();
@@ -252,11 +252,11 @@ exports.rpopImpl = function(conn) {
   };
 };
 
-exports.rpushImpl = function(conn) {
+export const rpushImpl = function(conn) {
   return function(key) {
     return function(value) {
       return function(onError, onSuccess) {
-        var handler = exports._intHandler(onError, onSuccess, false);
+        var handler = _intHandler(onError, onSuccess, false);
         conn.rpushBuffer.apply(conn, [key, value, handler]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
@@ -266,12 +266,12 @@ exports.rpushImpl = function(conn) {
   };
 };
 
-exports.lrangeImpl = function(conn) {
+export const lrangeImpl = function(conn) {
   return function(key) {
     return function(start) {
       return function(end) {
         return function(onError, onSuccess) {
-          var handler = exports._plainValueHandler(onError, onSuccess);
+          var handler = _plainValueHandler(onError, onSuccess);
           conn.lrangeBuffer.apply(conn, [key, start, end, handler]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
@@ -282,7 +282,7 @@ exports.lrangeImpl = function(conn) {
   };
 };
 
-exports._plainValueHandler = function(onError, onSuccess) {
+export const _plainValueHandler = function(onError, onSuccess) {
   return function(err, val) {
     if (err !== null) {
       onError(err);
@@ -292,7 +292,7 @@ exports._plainValueHandler = function(onError, onSuccess) {
   };
 };
 
-exports._nullValueHandler = function(onError, onSuccess) {
+export const _nullValueHandler = function(onError, onSuccess) {
   return function(err, val) {
     if (err !== null) {
       onError(err);
@@ -302,12 +302,12 @@ exports._nullValueHandler = function(onError, onSuccess) {
   };
 };
 
-exports.ltrimImpl = function(conn) {
+export const ltrimImpl = function(conn) {
   return function(key) {
     return function(start) {
       return function(end) {
         return function(onError, onSuccess) {
-          var handler = exports._nullValueHandler(onError, onSuccess);
+          var handler = _nullValueHandler(onError, onSuccess);
           conn.ltrimBuffer.apply(conn, [key, start, end, handler]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
@@ -318,7 +318,7 @@ exports.ltrimImpl = function(conn) {
   };
 };
 
-exports.mgetImpl = function(conn) {
+export const mgetImpl = function(conn) {
   return function(keys) {
     return function(onError, onSuccess) {
       conn.mgetBuffer(keys, function(err, value) {
@@ -335,7 +335,7 @@ exports.mgetImpl = function(conn) {
   };
 };
 
-exports.setImpl = function(conn) {
+export const setImpl = function(conn) {
   return function(key) {
     return function(value) {
       return function(expire) {
@@ -368,7 +368,7 @@ exports.setImpl = function(conn) {
   };
 };
 
-exports.zaddImpl = function(conn) {
+export const zaddImpl = function(conn) {
   return function(key) {
     return function(writeMode) {
       return function(returnMode) {
@@ -404,10 +404,10 @@ exports.zaddImpl = function(conn) {
   };
 };
 
-exports.zcardImpl = function(conn) {
+export const zcardImpl = function(conn) {
   return function(key) {
     return function(onError, onSuccess) {
-      conn.zcardBuffer.apply(conn, [key, exports._intHandler(onError, onSuccess, false)]);
+      conn.zcardBuffer.apply(conn, [key, _intHandler(onError, onSuccess, false)]);
       return function(cancelError, cancelerError, cancelerSuccess) {
         cancelError();
       };
@@ -415,7 +415,7 @@ exports.zcardImpl = function(conn) {
   };
 };
 
-exports.zincrbyImpl = function(conn) {
+export const zincrbyImpl = function(conn) {
   return function(key) {
     return function(increment) {
       return function(member) {
@@ -437,7 +437,7 @@ exports.zincrbyImpl = function(conn) {
   };
 };
 
-exports._intHandler = function(onError, onSuccess, nullable) {
+export const _intHandler = function(onError, onSuccess, nullable) {
   return function(err, val) {
     if (err !== null) {
       onError(err);
@@ -452,7 +452,7 @@ exports._intHandler = function(onError, onSuccess, nullable) {
   };
 };
 
-exports._sortedSetItemsHanlder = function(onError, onSuccess) {
+export const _sortedSetItemsHanlder = function(onError, onSuccess) {
   return function(err, val) {
     var curr = {}, result = [];
     if (err !== null) {
@@ -473,12 +473,12 @@ exports._sortedSetItemsHanlder = function(onError, onSuccess) {
   };
 };
 
-exports.zrangeImpl = function(conn) {
+export const zrangeImpl = function(conn) {
   return function(key) {
     return function(start) {
       return function(stop) {
         return function(onError, onSuccess) {
-          var handler = exports._sortedSetItemsHanlder(onError, onSuccess);
+          var handler = _sortedSetItemsHanlder(onError, onSuccess);
           conn.zrangeBuffer.apply(conn, [key, start, stop, 'WITHSCORES', handler]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
@@ -489,13 +489,13 @@ exports.zrangeImpl = function(conn) {
   };
 };
 
-exports.zrangebyscoreImpl = function(conn) {
+export const zrangebyscoreImpl = function(conn) {
   return function(key) {
     return function(min) {
       return function(max) {
         return function(limit) {
           return function(onError, onSuccess) {
-            var handler = exports._sortedSetItemsHanlder(onError, onSuccess),
+            var handler = _sortedSetItemsHanlder(onError, onSuccess),
                 args =[key, min, max, 'WITHSCORES'];
             if(limit !== null) {
               args.push('LIMIT');
@@ -511,11 +511,11 @@ exports.zrangebyscoreImpl = function(conn) {
   };
 };
 
-exports.zrankImpl = function(conn) {
+export const zrankImpl = function(conn) {
   return function(key) {
     return function(member) {
       return function(onError, onSuccess) {
-        conn.zrankBuffer.apply(conn, [key, member, exports._intHandler(onError, onSuccess, true)]);
+        conn.zrankBuffer.apply(conn, [key, member, _intHandler(onError, onSuccess, true)]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
         };
@@ -524,11 +524,11 @@ exports.zrankImpl = function(conn) {
   };
 };
 
-exports.zremImpl = function(conn) {
+export const zremImpl = function(conn) {
   return function(key) {
     return function(members) {
       return function(onError, onSuccess) {
-        conn.zremBuffer.apply(conn, [key, members, exports._intHandler(onError, onSuccess, false)]);
+        conn.zremBuffer.apply(conn, [key, members, _intHandler(onError, onSuccess, false)]);
         return function(cancelError, cancelerError, cancelerSuccess) {
           cancelError();
         };
@@ -537,12 +537,12 @@ exports.zremImpl = function(conn) {
   };
 };
 
-exports.zremrangebylexImpl = function(conn) {
+export const zremrangebylexImpl = function(conn) {
   return function(key) {
     return function(min) {
       return function(max) {
         return function(onError, onSuccess) {
-          conn.zremrangebylexBuffer.apply(conn, [key, min, max, exports._intHandler(onError, onSuccess, false)]);
+          conn.zremrangebylexBuffer.apply(conn, [key, min, max, _intHandler(onError, onSuccess, false)]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
           };
@@ -552,12 +552,12 @@ exports.zremrangebylexImpl = function(conn) {
   };
 };
 
-exports.zremrangebyrankImpl = function(conn) {
+export const zremrangebyrankImpl = function(conn) {
   return function(key) {
     return function(start) {
       return function(stop) {
         return function(onError, onSuccess) {
-          conn.zremrangebyrankBuffer.apply(conn, [key, start, stop, exports._intHandler(onError, onSuccess, false)]);
+          conn.zremrangebyrankBuffer.apply(conn, [key, start, stop, _intHandler(onError, onSuccess, false)]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
           };
@@ -567,12 +567,12 @@ exports.zremrangebyrankImpl = function(conn) {
   };
 };
 
-exports.zremrangebyscoreImpl = function(conn) {
+export const zremrangebyscoreImpl = function(conn) {
   return function(key) {
     return function(min) {
       return function(max) {
         return function(onError, onSuccess) {
-          conn.zremrangebyscoreBuffer.apply(conn, [key, min, max, exports._intHandler(onError, onSuccess, false)]);
+          conn.zremrangebyscoreBuffer.apply(conn, [key, min, max, _intHandler(onError, onSuccess, false)]);
           return function(cancelError, cancelerError, cancelerSuccess) {
             cancelError();
           };
@@ -582,13 +582,13 @@ exports.zremrangebyscoreImpl = function(conn) {
   };
 };
 
-exports.zrevrangebyscoreImpl = function(conn) {
+export const zrevrangebyscoreImpl = function(conn) {
   return function(key) {
     return function(min) {
       return function(max) {
         return function(limit) {
           return function(onError, onSuccess) {
-            var handler = exports._sortedSetItemsHanlder(onError, onSuccess),
+            var handler = _sortedSetItemsHanlder(onError, onSuccess),
                 args =[key, min, max, 'WITHSCORES'];
             if(limit !== null) {
               args.push('LIMIT');
@@ -604,7 +604,7 @@ exports.zrevrangebyscoreImpl = function(conn) {
   };
 };
 
-exports.zscoreImpl = function(conn) {
+export const zscoreImpl = function(conn) {
   return function(key) {
     return function(member) {
       return function(onError, onSuccess) {
